@@ -14,7 +14,7 @@ function QuickFilter({ goDeals }) {
   const creates = ["Капитал", "Защиту", "Стоимость бизнеса", "Репутацию"];
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} style={{ background: "none", border: `1px dashed ${C.line}`, color: C.muted, fontSize: 14, cursor: "pointer", padding: "12px 16px", borderRadius: 4, width: "100%", minHeight: 48, marginTop: 8, fontFamily: FONT.sans }}>
+      <button className="suggest ghost" style={{ marginTop: 10 }} onClick={() => setOpen(true)}>
         + Новая задача / возможность — прогнать через фильтр
       </button>
     );
@@ -77,12 +77,7 @@ export default function Today({ s, up, deals, today, date, time, northStar, goDe
   if (yesterdayMiss) suggestions.push(`Вчера не закрыто: ${yesterdayMiss}`);
 
   const phaseBtn = (k, label) => (
-    <button key={k} onClick={() => setPhase(k)} style={{
-      padding: "9px 16px", borderRadius: 4, cursor: "pointer", fontSize: 14, minHeight: 42,
-      border: `1px solid ${phase === k ? C.gold : C.line}`,
-      background: phase === k ? "rgba(200,164,92,.12)" : "transparent",
-      color: phase === k ? C.gold : C.muted, fontFamily: FONT.sans,
-    }}>{label}</button>
+    <button key={k} onClick={() => setPhase(k)} className={phase === k ? "on" : ""}>{label}</button>
   );
 
   const advanceDeal = (d) => setDeals(deals.map((x) => (x.id === d.id ? { ...x, stage: Math.min(x.stage + 1, 9), updated: today } : x)));
@@ -90,7 +85,7 @@ export default function Today({ s, up, deals, today, date, time, northStar, goDe
 
   return (
     <>
-      <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+      <div className="seg">
         {phaseBtn("morning", s.dayStarted ? "Утро ✓" : "Утро")}
         {phaseBtn("work", "Исполнение")}
         {phaseBtn("evening", "Вечер")}
@@ -105,16 +100,11 @@ export default function Today({ s, up, deals, today, date, time, northStar, goDe
 
             <div style={{ fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted, fontFamily: FONT.mono, margin: "18px 0 8px" }}>2 · Главный результат дня — факт, не встреча</div>
             {suggestions.length > 0 && !customOutcome && !s.primaryOutcome && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 10 }}>
                 {suggestions.map((sg) => (
-                  <button key={sg} onClick={() => up({ primaryOutcome: sg.replace(/^(North Star|Вчера не закрыто): /, "") })} style={{
-                    textAlign: "left", padding: "12px 14px", minHeight: 46, borderRadius: 4, cursor: "pointer",
-                    border: `1px solid ${C.line}`, background: C.panel2, color: C.ivory, fontSize: 14, fontFamily: FONT.sans,
-                  }}>{sg}</button>
+                  <button key={sg} className="suggest" onClick={() => up({ primaryOutcome: sg.replace(/^(North Star|Вчера не закрыто): /, "") })}>{sg}</button>
                 ))}
-                <button onClick={() => setCustomOutcome(true)} style={{ textAlign: "left", padding: "12px 14px", minHeight: 46, borderRadius: 4, cursor: "pointer", border: `1px dashed ${C.goldDim}`, background: "transparent", color: C.gold, fontSize: 14, fontFamily: FONT.sans }}>
-                  + Другой результат
-                </button>
+                <button className="suggest ghost" onClick={() => setCustomOutcome(true)}>+ Другой результат</button>
               </div>
             )}
             {(customOutcome || s.primaryOutcome || suggestions.length === 0) && (
@@ -125,18 +115,15 @@ export default function Today({ s, up, deals, today, date, time, northStar, goDe
             <div style={{ fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted, fontFamily: FONT.mono, margin: "18px 0 8px" }}>3 · Чего сегодня не делать (опционально)</div>
             <ChoiceChips multi options={REFUSAL_OPTIONS} value={s.refusalChips} onChange={(v) => up({ refusalChips: v })} />
 
-            <button onClick={() => { up({ dayStarted: true }); setPhase("work"); }} disabled={!s.stateCat || !s.primaryOutcome.trim()} style={{
-              width: "100%", marginTop: 20, minHeight: 52, borderRadius: 6, cursor: "pointer", fontSize: 16, fontFamily: FONT.sans,
-              border: `1px solid ${C.gold}`,
-              background: s.stateCat && s.primaryOutcome.trim() ? "rgba(200,164,92,.15)" : "transparent",
-              color: s.stateCat && s.primaryOutcome.trim() ? C.gold : C.muted,
-            }}>
-              {s.dayStarted ? "День запущен ✓" : "Начать день →"}
-            </button>
+            <div style={{ marginTop: 20 }}>
+              <Btn primary big disabled={!s.stateCat || !s.primaryOutcome.trim()} onClick={() => { up({ dayStarted: true }); setPhase("work"); }}>
+                {s.dayStarted ? "День запущен ✓" : "Начать день →"}
+              </Btn>
+            </div>
           </Section>
 
           {!fullRitual ? (
-            <button onClick={() => setFullRitual(true)} style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", padding: "4px 8px", textDecoration: "underline" }}>
+            <button className="link-btn" onClick={() => setFullRitual(true)}>
               Открыть полный ритуал (аффирмации · декларация · астрослой)
             </button>
           ) : (
@@ -163,11 +150,11 @@ export default function Today({ s, up, deals, today, date, time, northStar, goDe
       {phase === "work" && (
         <>
           {s.primaryOutcome.trim() ? (
-            <div style={{ border: `1px solid ${C.gold}`, background: "rgba(200,164,92,.07)", borderRadius: 6, padding: "14px 18px", marginBottom: 16 }}>
-              <div style={{ fontSize: 10, letterSpacing: ".14em", color: C.goldDim, textTransform: "uppercase", fontFamily: FONT.mono, marginBottom: 4 }}>
+            <div className="focus-banner fade-in">
+              <div className="kicker" style={{ marginBottom: 6 }}>
                 главный результат {s.chairmanOnly ? "· chairman action" : ""}
               </div>
-              <div style={{ fontFamily: FONT.serif, fontSize: 17, color: C.ivory, marginBottom: 10 }}>{s.primaryOutcome}</div>
+              <div style={{ fontFamily: FONT.serif, fontSize: 19, color: C.ivory, marginBottom: 12, lineHeight: 1.35 }}>{s.primaryOutcome}</div>
               <ChoiceChips green options={["Выполнено", "В процессе", "Заблокировано"]}
                 value={s.outcomeStatus === "done" ? "Выполнено" : s.outcomeStatus === "progress" ? "В процессе" : s.outcomeStatus === "blocked" ? "Заблокировано" : ""}
                 onChange={(v) => up({ outcomeStatus: v === "Выполнено" ? "done" : v === "В процессе" ? "progress" : v === "Заблокировано" ? "blocked" : "", proofDone: v === "Выполнено" })} />
@@ -243,7 +230,7 @@ export default function Today({ s, up, deals, today, date, time, northStar, goDe
           <Section kicker={`шаг ${["partial", "no", "blocked"].includes(s.outcomeStatus) ? 4 : 2}`} title="Главная победа дня">
             <Field label="" value={s.wins[0]} onChange={(v) => up((prev) => ({ wins: prev.wins.map((x, j) => (j === 0 ? v : x)) }))} placeholder="Факт, не намерение" />
             {!extraWins && (s.wins[1] || s.wins[2] ? null : (
-              <button onClick={() => setExtraWins(true)} style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", textDecoration: "underline", padding: 4 }}>+ Ещё победа</button>
+              <button className="link-btn" onClick={() => setExtraWins(true)}>+ Ещё победа</button>
             ))}
             {(extraWins || s.wins[1] || s.wins[2]) && (
               <>

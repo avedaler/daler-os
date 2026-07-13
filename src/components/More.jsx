@@ -93,14 +93,9 @@ export default function More({ s, up, date, today, deals, settings, upSettings, 
   const [sub, setSub] = useState("dev");
   return (
     <>
-      <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+      <div className="seg">
         {SUBS.map(([k, label]) => (
-          <button key={k} onClick={() => setSub(k)} style={{
-            padding: "9px 16px", borderRadius: 4, cursor: "pointer", fontSize: 14, minHeight: 42,
-            border: `1px solid ${sub === k ? C.gold : C.line}`,
-            background: sub === k ? "rgba(200,164,92,.12)" : "transparent",
-            color: sub === k ? C.gold : C.muted, fontFamily: FONT.sans,
-          }}>{label}</button>
+          <button key={k} onClick={() => setSub(k)} className={sub === k ? "on" : ""}>{label}</button>
         ))}
       </div>
       {sub === "dev" && <Development s={s} up={up} date={date} />}
