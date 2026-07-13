@@ -15,6 +15,7 @@ import Deals from "./components/Deals";
 import Forecast from "./components/Forecast";
 import Settings from "./components/Settings";
 import LockScreen from "./components/LockScreen";
+import PrintSheet from "./components/PrintSheet";
 import { hasLock, isUnlockedThisSession } from "./lib/lock";
 import { cloudConfigured, currentUser, syncAll } from "./lib/cloud";
 
@@ -141,7 +142,9 @@ export default function App() {
   );
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", color: C.ivory, fontFamily: FONT.sans, paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <>
+    <PrintSheet date={date} s={s} settings={settings} deals={deals} northStar={northStar} />
+    <div id="app-root" style={{ background: C.bg, minHeight: "100vh", color: C.ivory, fontFamily: FONT.sans, paddingBottom: "env(safe-area-inset-bottom)" }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "26px 16px 60px" }}>
         {/* LEDGER HEADER */}
         <Rule double />
@@ -194,7 +197,7 @@ export default function App() {
         </div>
 
         {tab === "morning" && <Morning s={s} up={up} date={date} settings={settings} upSettings={upSettings} />}
-        {tab === "day" && <Day s={s} up={up} deals={deals} today={now.date} date={date} goDeals={() => setTab("deals")} />}
+        {tab === "day" && <Day s={s} up={up} deals={deals} today={now.date} date={date} settings={settings} goDeals={() => setTab("deals")} />}
         {tab === "evening" && <Evening s={s} up={up} />}
         {tab === "deals" && <Deals deals={deals} setDeals={setDeals} today={now.date} />}
         {tab === "forecast" && <Forecast today={now.date} />}
@@ -203,5 +206,6 @@ export default function App() {
         {tab === "settings" && <Settings settings={settings} upSettings={upSettings} date={date} onLock={() => setLocked(true)} />}
       </div>
     </div>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import ArchitectTimer from "./ArchitectTimer";
 import TaskFilter from "./TaskFilter";
 import { loadDay } from "../lib/store";
 import { addDays } from "../lib/date";
+import { buildDayIcs, buildRitualsIcs, buildReminderText, downloadFile } from "../lib/ics";
 
 // Серия дней подряд (до вчера включительно), когда привычка соблюдалась
 function useStreaks(date) {
@@ -25,7 +26,8 @@ function useStreaks(date) {
   return streaks;
 }
 
-export default function Day({ s, up, deals, today, date, goDeals }) {
+export default function Day({ s, up, deals, today, date, settings, goDeals }) {
+  const [copyMsg, setCopyMsg] = useState("");
   const setBlock = (k, v) => up((prev) => ({ blocks: { ...prev.blocks, [k]: v } }));
   const setHabit = (patch) => up((prev) => ({ habits: { ...prev.habits, ...patch } }));
   const due = deals.filter((d) => d.nextDate && d.nextDate <= today && d.stage < 9);
@@ -103,6 +105,29 @@ export default function Day({ s, up, deals, today, date, goDeals }) {
 
       <Section kicker="капитал-фильтр" title="Фильтр новой задачи">
         <TaskFilter />
+      </Section>
+
+      <Section kicker="печать · календарь · reminders" title="Инструкция на день — наружу">
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <Btn primary onClick={() => window.print()}>🖨 Печать инструкции дня</Btn>
+          <Btn onClick={() => downloadFile(`daler-os-${date}.ics`, buildDayIcs(date, s, settings, deals))}>📆 День в календарь (.ics)</Btn>
+          <Btn onClick={() => downloadFile(`daler-os-rituals-${date}.ics`, buildRitualsIcs(date, settings, 30))}>📆 Ритуалы на 30 дней (.ics)</Btn>
+          <Btn onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(buildReminderText(date, s, settings, deals));
+              setCopyMsg("Скопировано — вставь в список Apple Reminders, строки станут отдельными напоминаниями");
+            } catch {
+              setCopyMsg("Буфер недоступен — разреши доступ к буферу обмена");
+            }
+            setTimeout(() => setCopyMsg(""), 5000);
+          }}>Скопировать план для Reminders</Btn>
+        </div>
+        {copyMsg && <div style={{ fontSize: 13, color: C.green, marginBottom: 8 }}>{copyMsg}</div>}
+        <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+          Печать — чистый лист со всем планом дня, чеклистами и местом для ручного заполнения вечером.
+          .ics открывается в Apple/Google Calendar: ритуалы с напоминаниями за 5 минут, сделки дня — событиями.
+          У Apple Reminders нет веб-импорта, поэтому план копируется текстом — вставка в список создаёт отдельные напоминания.
+        </div>
       </Section>
     </>
   );
