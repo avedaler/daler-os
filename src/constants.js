@@ -37,17 +37,35 @@ export const emptyDay = () => ({
   state: 5,
   proof: "",
   proofDone: false,
+  proofMiss: "",
   onlyDaler: "",
   refusal: "",
   body: "",
   family: "",
   blocks: { office: false, health: false, architect: false, evening: false },
+  architectResult: "",
   astro: "",
   wins: ["", "", ""],
   value: "",
   noise: "",
   tomorrow: "",
   shutdown: false,
+});
+
+// Стадии сделки: формула Master OS
+export const STAGES = ["Idea", "Qualified", "Introduced", "Meeting", "Proposal", "Negotiation", "Signed", "Paid", "Live", "Recurring"];
+
+export const emptyDeal = () => ({
+  id: "",
+  name: "",
+  company: "",
+  contact: "",
+  amount: "",
+  stage: 0,
+  nextStep: "",
+  nextDate: "",
+  blocker: "",
+  updated: "",
 });
 
 export const emptyWeekReview = () => ({
@@ -66,4 +84,5 @@ export const DEFAULT_SETTINGS = {
   architectTime: "15:00",
   notifyShutdown: true,
   shutdownTime: "21:30",
+  morningMode: "quick",
 };

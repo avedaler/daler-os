@@ -33,3 +33,39 @@ export async function loadSettings() {
 export async function saveSettings(s) {
   await set("settings", s);
 }
+
+export async function loadDeals() {
+  return (await get("deals")) || [];
+}
+
+export async function saveDeals(deals) {
+  await set("deals", deals);
+}
+
+// Полный бэкап/восстановление: все ключи IndexedDB одним JSON-объектом
+export async function exportAllData() {
+  const ks = await keys();
+  const out = { _app: "daler-os", _version: 1 };
+  for (const k of ks) {
+    if (typeof k === "string") out[k] = await get(k);
+  }
+  return out;
+}
+
+export async function importAllData(obj) {
+  if (!obj || obj._app !== "daler-os") throw new Error("Это не бэкап DALER OS");
+  let n = 0;
+  for (const [k, v] of Object.entries(obj)) {
+    if (k.startsWith("_")) continue;
+    await set(k, v);
+    n++;
+  }
+  return n;
+}
+
+export const LAST_EXPORT_KEY = "daleros:lastExport";
+export function daysSinceExport() {
+  const t = Number(localStorage.getItem(LAST_EXPORT_KEY) || 0);
+  if (!t) return Infinity;
+  return Math.floor((Date.now() - t) / 86400000);
+}

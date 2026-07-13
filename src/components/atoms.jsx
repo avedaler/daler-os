@@ -5,8 +5,8 @@ export const Rule = ({ double }) => (
 );
 
 export const Check = ({ on, onClick, gold }) => (
-  <button onClick={onClick} aria-label="toggle" style={{
-    width: 22, height: 22, minWidth: 22, borderRadius: 3, cursor: "pointer",
+  <button onClick={onClick} aria-label="toggle" aria-pressed={on} style={{
+    width: 26, height: 26, minWidth: 26, borderRadius: 3, cursor: "pointer",
     border: `1px solid ${on ? (gold ? C.gold : C.green) : C.line}`,
     background: on ? (gold ? "rgba(200,164,92,.15)" : "rgba(111,175,135,.12)") : "transparent",
     color: on ? (gold ? C.gold : C.green) : C.muted,
