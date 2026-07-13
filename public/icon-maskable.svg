@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0C0F14"/>
+  <line x1="128" y1="156" x2="384" y2="156" stroke="#C8A45C" stroke-width="5"/>
+  <text x="256" y="330" text-anchor="middle" font-family="Georgia, 'Playfair Display', serif" font-size="180" font-weight="600" fill="#E9E4D8">D</text>
+  <line x1="128" y1="366" x2="384" y2="366" stroke="#C8A45C" stroke-width="5"/>
+</svg>
