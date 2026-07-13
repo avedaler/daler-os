@@ -4,13 +4,111 @@ import { Section, CheckRow, Btn } from "./atoms";
 import { askPermission } from "../lib/notify";
 import { exportMonth } from "../lib/export";
 import { exportAllData, importAllData, LAST_EXPORT_KEY, daysSinceExport } from "../lib/store";
+import { hasLock, setPin, verifyPin, clearLock, lockNow, hasBiometric, biometricAvailable, registerBiometric, disableBiometric } from "../lib/lock";
+
+function LockSettings({ onLock }) {
+  const [enabled, setEnabled] = useState(hasLock());
+  const [bio, setBio] = useState(hasBiometric());
+  const [pin1, setPin1] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [current, setCurrent] = useState("");
+  const [msg, setMsg] = useState("");
+  const say = (m) => { setMsg(m); setTimeout(() => setMsg(""), 3000); };
+
+  const enable = async () => {
+    if (pin1.length < 4) return say("PIN — минимум 4 знака");
+    if (pin1 !== pin2) return say("PIN не совпадает");
+    await setPin(pin1);
+    setEnabled(true); setPin1(""); setPin2("");
+    say("Защита включена");
+  };
+
+  const change = async () => {
+    if (!(await verifyPin(current))) return say("Текущий PIN неверен");
+    if (pin1.length < 4) return say("Новый PIN — минимум 4 знака");
+    if (pin1 !== pin2) return say("Новый PIN не совпадает");
+    await setPin(pin1);
+    setCurrent(""); setPin1(""); setPin2("");
+    say("PIN изменён");
+  };
+
+  const disable = async () => {
+    if (!(await verifyPin(current))) return say("Текущий PIN неверен");
+    if (!confirm("Отключить защиту входа?")) return;
+    clearLock();
+    setEnabled(false); setBio(false); setCurrent("");
+    say("Защита отключена");
+  };
+
+  const addBio = async () => {
+    try {
+      await registerBiometric();
+      setBio(true);
+      say("Биометрия подключена");
+    } catch (e) {
+      say(`Не получилось: ${e.message || "устройство не поддерживает"}`);
+    }
+  };
+
+  const pinField = (label, val, setVal) => (
+    <label style={{ flex: "1 1 140px", display: "block", marginBottom: 14 }}>
+      <div style={{ fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted, marginBottom: 6, fontFamily: FONT.mono }}>{label}</div>
+      <input type="password" inputMode="numeric" autoComplete="off" value={val} placeholder="••••" aria-label={label}
+        onChange={(e) => setVal(e.target.value)}
+        style={{ width: "100%", boxSizing: "border-box", background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: C.ivory, padding: "10px 12px", fontSize: 16, fontFamily: FONT.mono, letterSpacing: ".3em" }} />
+    </label>
+  );
+
+  return (
+    <Section kicker="идентификация · это устройство" title="Вход в приложение">
+      {!enabled ? (
+        <>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 12 }}>
+            PIN закрывает приложение от посторонних на этом устройстве. Хранится как хеш, никуда не отправляется.
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {pinField("Новый PIN", pin1, setPin1)}
+            {pinField("Повторить PIN", pin2, setPin2)}
+          </div>
+          <Btn primary onClick={enable}>Включить PIN-вход</Btn>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 13, color: C.green, marginBottom: 12 }}>✓ Защита включена{bio ? " · биометрия подключена" : ""}</div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {pinField("Текущий PIN", current, setCurrent)}
+            {pinField("Новый PIN", pin1, setPin1)}
+            {pinField("Повторить новый", pin2, setPin2)}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+            <Btn primary onClick={change}>Сменить PIN</Btn>
+            <Btn onClick={disable}>Отключить (нужен текущий PIN)</Btn>
+            <Btn onClick={() => { lockNow(); onLock(); }}>Заблокировать сейчас</Btn>
+          </div>
+          {biometricAvailable() && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {!bio
+                ? <Btn onClick={addBio}>Подключить Face ID / Touch ID</Btn>
+                : <Btn onClick={() => { disableBiometric(); setBio(false); say("Биометрия отключена"); }}>Отключить биометрию</Btn>}
+            </div>
+          )}
+        </>
+      )}
+      <div style={{ minHeight: 20, fontSize: 13, color: C.gold, fontFamily: FONT.mono, marginTop: 8 }}>{msg}</div>
+      <div style={{ fontSize: 12, color: C.muted }}>
+        Забытый PIN не восстанавливается — только очистка данных сайта (история удалится). Держи свежий JSON-бэкап.
+        Облачный логин с синхронизацией появится после подключения бэкенда.
+      </div>
+    </Section>
+  );
+}
 
 const TimeInput = ({ value, onChange, disabled }) => (
   <input type="time" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
     style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: disabled ? C.muted : C.ivory, padding: "6px 10px", fontSize: 14, fontFamily: FONT.mono, colorScheme: "dark" }} />
 );
 
-export default function Settings({ settings, upSettings, date }) {
+export default function Settings({ settings, upSettings, date, onLock }) {
   const [perm, setPerm] = useState(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
   const [exportMsg, setExportMsg] = useState("");
   const [backupMsg, setBackupMsg] = useState("");
@@ -56,6 +154,8 @@ export default function Settings({ settings, upSettings, date }) {
 
   return (
     <>
+      <LockSettings onLock={onLock} />
+
       <Section kicker="критично" title="Бэкап данных">
         {staleDays >= 7 && (
           <div style={{ border: `1px solid ${C.red}`, color: C.red, borderRadius: 4, padding: "10px 14px", fontSize: 13, marginBottom: 14 }}>

@@ -14,8 +14,11 @@ import CeoReview from "./components/CeoReview";
 import Deals from "./components/Deals";
 import Forecast from "./components/Forecast";
 import Settings from "./components/Settings";
+import LockScreen from "./components/LockScreen";
+import { hasLock, isUnlockedThisSession } from "./lib/lock";
 
 export default function App() {
+  const [locked, setLocked] = useState(() => hasLock() && !isUnlockedThisSession());
   const [now, setNow] = useState(klNow());
   const [date, setDate] = useState(now.date); // просматриваемая дата (может быть архивной)
   const [tab, setTab] = useState("morning");
@@ -113,6 +116,8 @@ export default function App() {
     ["settings", "⚙", backupStale ? "!" : null],
   ];
 
+  if (locked) return <LockScreen onUnlock={() => setLocked(false)} />;
+
   if (!loaded) return <div style={{ background: C.bg, minHeight: "100vh", color: C.muted, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT.sans }}>Загрузка…</div>;
 
   const navBtn = (label, onClick, aria) => (
@@ -179,7 +184,7 @@ export default function App() {
         {tab === "forecast" && <Forecast today={now.date} />}
         {tab === "week" && <Week date={date} />}
         {tab === "ceo" && <CeoReview date={date} />}
-        {tab === "settings" && <Settings settings={settings} upSettings={upSettings} date={date} />}
+        {tab === "settings" && <Settings settings={settings} upSettings={upSettings} date={date} onLock={() => setLocked(true)} />}
       </div>
     </div>
   );
