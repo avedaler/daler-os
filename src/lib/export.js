@@ -4,7 +4,7 @@ import { prettyDate, isoWeek, MO_NOM } from "./date";
 import { dayScore } from "./score";
 import { personalDay } from "./numerology";
 import { computeAstro, astroToText } from "./astro";
-import { emptyDay } from "../constants";
+import { migrateDay } from "../constants";
 
 export async function exportMonth(ym) {
   // ym: "YYYY-MM"
@@ -16,17 +16,19 @@ export async function exportMonth(ym) {
   for (const iso of days) {
     const raw = await loadDay(iso);
     if (!raw) continue;
-    const s = { ...emptyDay(), ...raw };
+    const s = migrateDay(raw);
     const { pts, max } = dayScore(s);
     const num = personalDay(iso);
     weeks.add(isoWeek(iso));
     lines.push(`## ${prettyDate(iso)} — ${pts}/${max}`);
     lines.push(`Личный день ${num.pd} · месяц ${num.pm} · год ${num.py}`);
     lines.push("");
-    if (s.architectQ) lines.push(`**Вопрос Архитектора:** ${s.architectQ}`);
-    if (s.proof) lines.push(`**Доказательство дня:** ${s.proof}${s.proofDone ? " ✓" : " (не закрыто)"}`);
-    if (s.onlyDaler) lines.push(`**Только Далер:** ${s.onlyDaler}`);
-    if (s.refusal) lines.push(`**Отказ дня:** ${s.refusal}`);
+    const done = s.outcomeStatus === "done" || s.proofDone;
+    if (s.primaryOutcome) lines.push(`**Главный результат:** ${s.primaryOutcome}${done ? " ✓" : ` (${s.outcomeStatus || "не закрыт"}${s.missAction ? ` → ${s.missAction}` : ""})`}`);
+    if (s.chairmanOnly) lines.push(`**Chairman action** — требовалось личное участие`);
+    if (s.stateCat) lines.push(`**Состояние:** ${s.stateCat}`);
+    if ((s.refusalChips || []).length) lines.push(`**Отказ дня:** ${s.refusalChips.join(" · ")}`);
+    if (s.artifactType) lines.push(`**Артефакт Часа Архитектора:** ${s.artifactType}${s.architectResult ? ` — ${s.architectResult}` : ""}`);
     if (s.body) lines.push(`**Тело:** ${s.body}`);
     if (s.family) lines.push(`**Семья:** ${s.family}`);
     const wins = s.wins.filter((w) => w.trim());

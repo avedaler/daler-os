@@ -17,6 +17,7 @@ function CloudSettings() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [showSql, setShowSql] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const say = (m) => setMsg(m);
 
   useEffect(() => { if (cloudConfigured()) currentUser().then(setUser); }, []);
@@ -73,19 +74,28 @@ function CloudSettings() {
     <Section kicker="supabase · синхронизация устройств" title="Облако">
       {!cfg ? (
         <>
-          <div style={{ fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 1.6 }}>
-            Один раз: на supabase.com создай проект (регион Singapore — ближе к KL) → SQL Editor → выполни SQL (кнопка ниже) →
-            Settings → API → скопируй Project URL и anon public key сюда.
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 12 }}>
+            Синхронизация между устройствами не подключена. Данные живут на этом устройстве.
           </div>
-          <Btn onClick={() => setShowSql(!showSql)}>{showSql ? "Скрыть SQL" : "Показать SQL для таблицы"}</Btn>
-          {showSql && (
-            <pre style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, padding: 12, fontSize: 11, color: C.ivory, overflowX: "auto", margin: "12px 0" }}>{SETUP_SQL}</pre>
+          {!showAdvanced ? (
+            <Btn onClick={() => setShowAdvanced(true)}>Настроить (Advanced)</Btn>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 1.6 }}>
+                Один раз: на supabase.com создай проект (регион Singapore) → SQL Editor → выполни SQL (кнопка ниже) →
+                Settings → API → скопируй Project URL и anon public key сюда.
+              </div>
+              <Btn onClick={() => setShowSql(!showSql)}>{showSql ? "Скрыть SQL" : "Показать SQL для таблицы"}</Btn>
+              {showSql && (
+                <pre style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, padding: 12, fontSize: 11, color: C.ivory, overflowX: "auto", margin: "12px 0" }}>{SETUP_SQL}</pre>
+              )}
+              <div style={{ marginTop: 12 }}>
+                {field("Project URL", url, setUrl, "text", "https://xxxx.supabase.co")}
+                {field("anon public key", anonKey, setAnonKey, "text", "eyJhbGciOi…")}
+                <Btn primary onClick={connect}>Подключить облако</Btn>
+              </div>
+            </>
           )}
-          <div style={{ marginTop: 12 }}>
-            {field("Project URL", url, setUrl, "text", "https://xxxx.supabase.co")}
-            {field("anon public key", anonKey, setAnonKey, "text", "eyJhbGciOi…")}
-            <Btn primary onClick={connect}>Подключить облако</Btn>
-          </div>
         </>
       ) : !user ? (
         <>

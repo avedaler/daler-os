@@ -31,6 +31,18 @@ export const FONT = {
 export const BIRTH = { day: 3, month: 4 };
 
 export const emptyDay = () => ({
+  // v3: одно главное поле дня
+  primaryOutcome: "",
+  chairmanOnly: false,      // «требуется лично моё участие»
+  stateCat: "",             // Низкая / Нормально / Сильное / Перегружен
+  dayStarted: false,
+  refusalChips: [],
+  outcomeStatus: "",        // done | progress | blocked | partial | no
+  missReasonChoice: "",
+  missAction: "",
+  healthActs: [],           // Тренировка / Ходьба / Добавки / Восстановление
+  artifactType: "",
+  // наследие v1/v2 (миграция при загрузке)
   aff: [false, false, false],
   decl: false,
   architectQ: "",
@@ -61,6 +73,22 @@ export const emptyDay = () => ({
     hobby: "",
   },
 });
+
+// Миграция старой записи к v3
+export function migrateDay(v) {
+  const s = { ...emptyDay(), ...v, blocks: { ...emptyDay().blocks, ...(v?.blocks || {}) }, habits: { ...emptyDay().habits, ...(v?.habits || {}) } };
+  if (!s.primaryOutcome) s.primaryOutcome = s.proof || s.architectQ || "";
+  if (!s.outcomeStatus && s.proofDone) s.outcomeStatus = "done";
+  if (!s.artifactType && s.architectResult) s.artifactType = "Другое";
+  return s;
+}
+
+export const STATE_OPTIONS = ["Низкая энергия", "Нормально", "Сильное состояние", "Перегружен"];
+export const REFUSAL_OPTIONS = ["Не начинать новое", "Не в операционку", "Без сообщений до фокуса", "Без встреч без цели", "Без эмоциональных конфликтов"];
+export const MISS_REASONS = ["Жду другого человека", "Изменился приоритет", "Недооценил объём", "Избегал действия", "Не хватило времени", "Возник кризис"];
+export const MISS_ACTIONS = ["Перенести", "Делегировать", "Эскалировать", "Изменить подход", "Отказаться"];
+export const ARTIFACT_TYPES = ["Решение", "Memo", "Список", "Делегировано", "Проект остановлен", "Другое"];
+export const HEALTH_ACTS = ["Тренировка", "Ходьба", "Добавки", "Восстановление"];
 
 export const HOBBIES = ["Overlanding", "Golf range", "Padel"];
 

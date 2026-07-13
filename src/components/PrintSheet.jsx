@@ -54,10 +54,9 @@ export default function PrintSheet({ date, s, settings, deals, northStar }) {
       </div>}
 
       <h2>Утро — до телефона</h2>
-      <Row label="Один главный результат (факт)" value={s.proof} />
-      <Row label="Действие только Далера" value={s.onlyDaler} />
-      <Row label="Одно «нет»" value={s.refusal} />
-      {s.architectQ && <Row label="Фокус дня" value={s.architectQ} />}
+      <Row label="Главный результат (факт)" value={s.primaryOutcome} />
+      {s.chairmanOnly && <div style={{ marginBottom: 6 }}><b>Chairman action — требуется лично.</b></div>}
+      <Row label="Чего не делать" value={(s.refusalChips || []).join(" · ") || s.refusal} />}
 
       <h2>Расписание</h2>
       <div className="mono">

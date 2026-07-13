@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { C, FONT, emptyDay } from "../constants";
+import { C, FONT, emptyDay, migrateDay } from "../constants";
 import { Section } from "./atoms";
 import { loadDay } from "../lib/store";
 import { prettyDate, weekday, addDays, isoWeek } from "../lib/date";
@@ -10,7 +10,7 @@ async function collectWeek(monday) {
   for (let i = 0; i < 7; i++) {
     const d = addDays(monday, i);
     const v = await loadDay(d);
-    rows.push({ date: d, data: v });
+    rows.push({ date: d, data: v ? migrateDay(v) : null });
   }
   return rows;
 }
@@ -23,7 +23,7 @@ function stats(rows) {
   return {
     filled: filled.length,
     avg: Math.round(avg * 10) / 10,
-    proofs: filled.filter((r) => r.data.proofDone).length,
+    proofs: filled.filter((r) => r.data.outcomeStatus === "done" || r.data.proofDone).length,
     trainings: filled.filter((r) => r.data.blocks?.health).length,
     architect: filled.filter((r) => r.data.blocks?.architect).length,
     shutdowns: filled.filter((r) => r.data.shutdown).length,
@@ -120,7 +120,7 @@ export default function Week({ date }) {
               <div style={{ height: 6, background: C.panel2, borderRadius: 3, border: `1px solid ${C.line}` }}>
                 <div style={{ width: `${w}%`, height: "100%", background: sc.pts >= 8 ? C.green : C.gold, borderRadius: 3 }} />
               </div>
-              {data.proof && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>Результат: {data.proof}{data.proofDone ? " ✓" : " (не закрыт)"}</div>}
+              {data.primaryOutcome && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>Результат: {data.primaryOutcome}{data.outcomeStatus === "done" || data.proofDone ? " ✓" : " (не закрыт)"}</div>}
             </div>
           );
         })}

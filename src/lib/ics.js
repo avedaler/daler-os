@@ -43,12 +43,12 @@ export function buildDayIcs(iso, s, settings, deals) {
   ev.push(vevent({
     uid: `morning-${iso}`, iso, start: settings.morningTime || "07:30", minutes: 20,
     title: "DALER OS · Утренний ритуал",
-    desc: [s.proof && `Результат дня: ${s.proof}`, s.onlyDaler && `Только Далер: ${s.onlyDaler}`, s.refusal && `Нет: ${s.refusal}`].filter(Boolean).join("\n") || "Состояние, результат дня, «только Далер», одно «нет»",
+    desc: [s.primaryOutcome && `Результат дня: ${s.primaryOutcome}`, (s.refusalChips || []).length && `Нет: ${s.refusalChips.join(", ")}`].filter(Boolean).join("\n") || "Состояние, главный результат, одно «нет»",
   }));
   ev.push(vevent({
     uid: `architect-${iso}`, iso, start: settings.architectTime || "15:00", minutes: 60,
     title: "DALER OS · Час Архитектора",
-    desc: (s.architectQ ? `Фокус: ${s.architectQ}\n` : "") + "Без телефона и встреч. Выход — артефакт: решение / memo / список.",
+    desc: (s.primaryOutcome ? `Фокус: ${s.primaryOutcome}\n` : "") + "Без телефона и встреч. Выход — артефакт: решение / memo / список.",
   }));
   ev.push(vevent({
     uid: `shutdown-${iso}`, iso, start: settings.shutdownTime || "21:30", minutes: 20,
@@ -80,9 +80,7 @@ export function buildRitualsIcs(iso, settings, days = 30) {
 export function buildReminderText(iso, s, settings, deals) {
   const L = [];
   L.push(`Утренний ритуал ${settings.morningTime || "07:30"}`);
-  if (s.proof) L.push(`Результат дня: ${s.proof}`);
-  if (s.architectQ) L.push(`Фокус: ${s.architectQ}`);
-  if (s.onlyDaler) L.push(`Только Далер: ${s.onlyDaler}`);
+  if (s.primaryOutcome) L.push(`Результат дня: ${s.primaryOutcome}`);
   L.push(`Час Архитектора ${settings.architectTime || "15:00"} — артефакт на выходе`);
   for (const d of deals.filter((d) => d.nextDate && d.nextDate <= iso && d.stage < 9)) {
     L.push(`Сделка ${d.name}: ${d.nextStep || "двинуть стадию"}`);

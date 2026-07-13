@@ -35,12 +35,53 @@ export const Section = ({ title, kicker, children }) => (
   </div>
 );
 
-export const CheckRow = ({ on, onClick, label, gold }) => (
-  <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
-    <Check gold={gold} on={on} onClick={onClick} />
-    <span style={{ fontSize: 14 }}>{label}</span>
-  </div>
-);
+// Полностью кликабельная строка-чекбокс: вся строка — кнопка, высота ≥48
+export const CheckRow = ({ on, onClick, label, gold }) => {
+  const color = on ? (gold ? C.gold : C.green) : C.line;
+  return (
+    <button onClick={onClick} aria-label={typeof label === "string" ? label : "пункт"} aria-pressed={on} style={{
+      display: "flex", gap: 12, alignItems: "center", width: "100%", minHeight: 48,
+      background: on ? (gold ? "rgba(200,164,92,.06)" : "rgba(111,175,135,.06)") : "transparent",
+      border: "none", borderRadius: 4, padding: "6px 8px", marginBottom: 4, cursor: "pointer",
+      textAlign: "left", fontFamily: FONT.sans, transition: "background .15s",
+    }}>
+      <span aria-hidden style={{
+        width: 26, height: 26, minWidth: 26, borderRadius: 3, border: `1px solid ${color}`,
+        background: on ? (gold ? "rgba(200,164,92,.15)" : "rgba(111,175,135,.12)") : "transparent",
+        color: on ? (gold ? C.gold : C.green) : "transparent",
+        fontSize: 14, lineHeight: "24px", textAlign: "center",
+      }}>✓</span>
+      <span style={{ fontSize: 14, color: on ? C.ivory : C.muted }}>{label}</span>
+    </button>
+  );
+};
+
+// Единый компонент выбора: одиночный или множественный
+export const ChoiceChips = ({ options, value, onChange, multi, green }) => {
+  const isOn = (o) => (multi ? (value || []).includes(o) : value === o);
+  const toggle = (o) => {
+    if (multi) {
+      const cur = value || [];
+      onChange(cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o]);
+    } else {
+      onChange(value === o ? "" : o);
+    }
+  };
+  const activeC = green ? C.green : C.gold;
+  const activeBg = green ? "rgba(111,175,135,.12)" : "rgba(200,164,92,.12)";
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {options.map((o) => (
+        <button key={o} onClick={() => toggle(o)} aria-pressed={isOn(o)} style={{
+          padding: "10px 16px", borderRadius: 4, cursor: "pointer", fontSize: 14, minHeight: 44,
+          border: `1px solid ${isOn(o) ? activeC : C.line}`,
+          background: isOn(o) ? activeBg : "transparent",
+          color: isOn(o) ? activeC : C.muted, fontFamily: FONT.sans,
+        }}>{o}{isOn(o) ? " ✓" : ""}</button>
+      ))}
+    </div>
+  );
+};
 
 export const Btn = ({ onClick, children, primary }) => (
   <button onClick={onClick} style={{

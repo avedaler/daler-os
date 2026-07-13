@@ -1,19 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { C, FONT, emptyDay, DEFAULT_SETTINGS } from "./constants";
-import { klNow, prettyDate, weekday, isoWeek, addDays } from "./lib/date";
+import { C, FONT, emptyDay, migrateDay, DEFAULT_SETTINGS } from "./constants";
+import { klNow, prettyDate, addDays, isoWeek } from "./lib/date";
 import { personalDay } from "./lib/numerology";
-import { dayScore, tabProgress } from "./lib/score";
+import { dayScore, morningProgress } from "./lib/score";
 import { loadDay, saveDay, loadSettings, saveSettings, loadDeals, saveDeals, loadWeek, daysSinceExport } from "./lib/store";
 import { startScheduler } from "./lib/notify";
 import { Rule } from "./components/atoms";
-import Morning from "./components/Morning";
-import Day from "./components/Day";
-import Evening from "./components/Evening";
-import Week from "./components/Week";
-import CeoReview from "./components/CeoReview";
+import Today from "./components/Today";
 import Deals from "./components/Deals";
-import Forecast from "./components/Forecast";
-import Settings from "./components/Settings";
+import { dealStatus } from "./components/Deals";
+import Overview from "./components/Overview";
+import More from "./components/More";
 import LockScreen from "./components/LockScreen";
 import PrintSheet from "./components/PrintSheet";
 import { hasLock, isUnlockedThisSession } from "./lib/lock";
@@ -22,8 +19,8 @@ import { cloudConfigured, currentUser, syncAll } from "./lib/cloud";
 export default function App() {
   const [locked, setLocked] = useState(() => hasLock() && !isUnlockedThisSession());
   const [now, setNow] = useState(klNow());
-  const [date, setDate] = useState(now.date); // просматриваемая дата (может быть архивной)
-  const [tab, setTab] = useState("morning");
+  const [date, setDate] = useState(now.date);
+  const [tab, setTab] = useState("today");
   const [s, setS] = useState(emptyDay());
   const [deals, setDealsState] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -39,7 +36,6 @@ export default function App() {
     const t = setInterval(() => {
       const n = klNow();
       setNow((prev) => {
-        // полночь: если смотрели «сегодня», переключаемся на новый день
         if (prev.date !== n.date) setDate((d) => (d === prev.date ? n.date : d));
         return n;
       });
@@ -47,12 +43,10 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  // при старте: если облако настроено и есть вход — сначала сверка (макс. 6 сек)
   const syncedOnce = useRef(false);
   const [syncNote, setSyncNote] = useState("");
-
-  // загрузка дня, настроек, сделок, North Star прошлой недели
   const skipSave = useRef(true);
+
   useEffect(() => {
     (async () => {
       if (!syncedOnce.current && cloudConfigured()) {
@@ -69,7 +63,7 @@ export default function App() {
       try {
         const v = await loadDay(date);
         skipSave.current = true;
-        setS(v ? { ...emptyDay(), ...v } : emptyDay());
+        setS(v ? migrateDay(v) : emptyDay());
         const st = await loadSettings();
         if (st) setSettings({ ...DEFAULT_SETTINGS, ...st });
         setDealsState(await loadDeals());
@@ -80,10 +74,8 @@ export default function App() {
     })();
   }, [date]);
 
-  // планировщик напоминаний
   useEffect(() => startScheduler(() => settingsRef.current), []);
 
-  // debounce-сохранение: реагирует на любое изменение s, кроме только что загруженного
   useEffect(() => {
     if (!loaded) return;
     if (skipSave.current) { skipSave.current = false; return; }
@@ -99,8 +91,6 @@ export default function App() {
     return () => clearTimeout(saveTimer.current);
   }, [s, loaded, date]);
 
-  // функциональное обновление — быстрые последовательные действия не теряются;
-  // patch может быть объектом или функцией prev => patch
   const up = useCallback((patch) => setS((prev) => ({ ...prev, ...(typeof patch === "function" ? patch(prev) : patch) })), []);
 
   const upSettings = (patch) => {
@@ -116,21 +106,15 @@ export default function App() {
 
   const num = personalDay(date);
   const { pts, max } = dayScore(s);
-  const prog = tabProgress(s);
-  const isFriday = weekday(now.date) === 5;
+  const mp = morningProgress(s);
   const backupStale = daysSinceExport() >= 7;
-  const dealsDue = deals.filter((d) => d.nextDate && d.nextDate <= now.date && d.stage < 9).length;
+  const dealsAttn = deals.filter((d) => ["overdue", "today", "nostep"].includes(dealStatus(d, now.date).kind)).length;
 
-  const badge = (p) => `${p.done}/${p.max}`;
   const tabs = [
-    ["morning", "Утро", badge(prog.morning)],
-    ["day", "День", badge(prog.day)],
-    ["evening", "Вечер", badge(prog.evening)],
-    ["deals", "Сделки", dealsDue ? `${dealsDue}!` : null],
-    ["forecast", "Расчёт", null],
-    ["week", "Неделя", null],
-    ["ceo", "CEO", isFriday ? "due" : null],
-    ["settings", "⚙", backupStale ? "!" : null],
+    ["today", "Сегодня", s.dayStarted ? `${pts}` : `${mp.done}/${mp.max}`],
+    ["deals", "Сделки", dealsAttn ? `${dealsAttn}!` : null],
+    ["overview", "Обзор", null],
+    ["more", "Ещё", backupStale ? "!" : null],
   ];
 
   if (locked) return <LockScreen onUnlock={() => setLocked(false)} />;
@@ -144,13 +128,13 @@ export default function App() {
   return (
     <>
     <PrintSheet date={date} s={s} settings={settings} deals={deals} northStar={northStar} />
-    <div id="app-root" style={{ background: C.bg, minHeight: "100vh", color: C.ivory, fontFamily: FONT.sans, paddingBottom: "env(safe-area-inset-bottom)" }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "26px 16px 60px" }}>
+    <div id="app-root" style={{ background: C.bg, minHeight: "100vh", color: C.ivory, fontFamily: FONT.sans }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "22px 16px 110px" }}>
         {/* LEDGER HEADER */}
         <Rule double />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 2px", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <div style={{ fontFamily: FONT.serif, fontSize: 26, letterSpacing: ".02em" }}>
+            <div style={{ fontFamily: FONT.serif, fontSize: 24, letterSpacing: ".02em" }}>
               DALER <span style={{ color: C.gold }}>OS</span>
             </div>
             <div style={{ fontSize: 13, color: isToday ? C.muted : C.gold, marginTop: 4, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -167,44 +151,46 @@ export default function App() {
           <div style={{ textAlign: "right", fontFamily: FONT.mono }}>
             <div style={{ fontSize: 11, color: C.muted, letterSpacing: ".1em" }}>БАЛАНС ДНЯ</div>
             <div style={{ fontSize: 24, color: pts >= 8 ? C.green : pts >= 5 ? C.gold : C.muted }}>{pts}<span style={{ color: C.muted, fontSize: 15 }}>/{max}</span></div>
-            <div style={{ fontSize: 10, color: C.muted }}>личный день {num.pd} · месяц {num.pm} · год {num.py}</div>
+            <div style={{ fontSize: 10, color: C.muted }}>день {num.pd} · {saveState || syncNote}</div>
           </div>
         </div>
         <Rule double />
 
-        {/* NORTH STAR из CEO-review прошлой недели */}
         {northStar && (
-          <div style={{ marginTop: 14, border: `1px solid ${C.goldDim}`, borderRadius: 6, padding: "10px 14px", display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, letterSpacing: ".14em", color: C.goldDim, textTransform: "uppercase", fontFamily: FONT.mono }}>north star недели</span>
+          <div style={{ marginTop: 12, border: `1px solid ${C.goldDim}`, borderRadius: 6, padding: "9px 14px", display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, letterSpacing: ".14em", color: C.goldDim, textTransform: "uppercase", fontFamily: FONT.mono }}>north star</span>
             <span style={{ fontSize: 14, color: C.ivory }}>{northStar}</span>
           </div>
         )}
 
-        {/* TABS */}
-        <div style={{ display: "flex", gap: 6, margin: "16px 0 20px", flexWrap: "wrap" }}>
+        <div style={{ height: 16 }} />
+
+        {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} today={now.date} date={date} time={now.time} northStar={northStar} goDeals={() => setTab("deals")} />}
+        {tab === "deals" && <Deals deals={deals} setDeals={setDeals} today={now.date} />}
+        {tab === "overview" && <Overview date={date} />}
+        {tab === "more" && <More s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} onLock={() => setLocked(true)} />}
+      </div>
+
+      {/* НИЖНЯЯ НАВИГАЦИЯ */}
+      <nav style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+        background: "rgba(12,15,20,.96)", backdropFilter: "blur(8px)",
+        borderTop: `1px solid ${C.line}`, paddingBottom: "env(safe-area-inset-bottom)",
+      }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", display: "flex" }}>
           {tabs.map(([k, label, b]) => (
-            <button key={k} onClick={() => setTab(k)} aria-label={k === "settings" ? "Настройки" : label} style={{
-              padding: "8px 14px", borderRadius: 4, cursor: "pointer", fontSize: 14, minHeight: 40,
-              border: `1px solid ${tab === k ? C.gold : C.line}`,
-              background: tab === k ? "rgba(200,164,92,.12)" : "transparent",
-              color: tab === k ? C.gold : C.muted, fontFamily: FONT.sans,
+            <button key={k} onClick={() => setTab(k)} aria-label={label} style={{
+              flex: 1, minHeight: 56, cursor: "pointer", fontSize: 14, fontFamily: FONT.sans,
+              background: "transparent", border: "none",
+              borderTop: `2px solid ${tab === k ? C.gold : "transparent"}`,
+              color: tab === k ? C.gold : C.muted,
             }}>
               {label}
-              {b && <span style={{ fontSize: 10, fontFamily: FONT.mono, marginLeft: 6, color: b.includes("!") || b === "due" ? C.red : C.muted }}>{b}</span>}
+              {b && <span style={{ fontSize: 10, fontFamily: FONT.mono, marginLeft: 5, color: String(b).includes("!") ? C.red : tab === k ? C.gold : C.muted }}>{b}</span>}
             </button>
           ))}
-          <div style={{ marginLeft: "auto", alignSelf: "center", fontSize: 11, color: C.muted, fontFamily: FONT.mono }}>{syncNote || saveState}</div>
         </div>
-
-        {tab === "morning" && <Morning s={s} up={up} date={date} settings={settings} upSettings={upSettings} />}
-        {tab === "day" && <Day s={s} up={up} deals={deals} today={now.date} date={date} settings={settings} goDeals={() => setTab("deals")} />}
-        {tab === "evening" && <Evening s={s} up={up} />}
-        {tab === "deals" && <Deals deals={deals} setDeals={setDeals} today={now.date} />}
-        {tab === "forecast" && <Forecast today={now.date} />}
-        {tab === "week" && <Week date={date} />}
-        {tab === "ceo" && <CeoReview date={date} />}
-        {tab === "settings" && <Settings settings={settings} upSettings={upSettings} date={date} onLock={() => setLocked(true)} />}
-      </div>
+      </nav>
     </div>
     </>
   );

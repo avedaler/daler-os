@@ -4,11 +4,21 @@ import { Section, Field, Btn } from "./atoms";
 
 const stageColor = (i) => (i >= 7 ? C.green : i >= 6 ? C.gold : C.muted);
 
+// Статус срока: просрочено (красный) · сегодня (золотой) · нет шага (предупреждение)
+export function dealStatus(d, today) {
+  if (d.stage >= 9) return { kind: "done" };
+  if (!d.nextStep?.trim() || !d.nextDate) return { kind: "nostep", color: C.gold, label: "СЛЕДУЮЩИЙ ШАГ НЕ НАЗНАЧЕН" };
+  if (d.nextDate < today) return { kind: "overdue", color: C.red, label: "ПРОСРОЧЕНО" };
+  if (d.nextDate === today) return { kind: "today", color: C.gold, label: "СЕГОДНЯ" };
+  return { kind: "ok" };
+}
+
 function DealCard({ d, today, onChange, onDelete }) {
   const [open, setOpen] = useState(false);
-  const overdue = d.nextDate && d.nextDate <= today && d.stage < 9;
+  const st = dealStatus(d, today);
+  const borderC = st.kind === "overdue" ? C.red : st.kind === "today" ? C.gold : C.line;
   return (
-    <div style={{ border: `1px solid ${overdue ? C.red : C.line}`, borderRadius: 6, padding: "12px 14px", marginBottom: 10, background: C.panel2 }}>
+    <div style={{ border: `1px solid ${borderC}`, borderRadius: 6, padding: "12px 14px", marginBottom: 10, background: C.panel2 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap", cursor: "pointer" }} onClick={() => setOpen(!open)}>
         <div>
           <span style={{ fontFamily: FONT.serif, fontSize: 16, color: C.ivory }}>{d.name || "Без названия"}</span>
@@ -19,10 +29,10 @@ function DealCard({ d, today, onChange, onDelete }) {
           <span style={{ fontFamily: FONT.mono, fontSize: 11, color: stageColor(d.stage), border: `1px solid ${stageColor(d.stage)}`, borderRadius: 3, padding: "2px 8px" }}>{STAGES[d.stage]}</span>
         </div>
       </div>
-      <div style={{ fontSize: 13, color: overdue ? C.red : C.muted, marginTop: 6 }}>
+      <div style={{ fontSize: 13, color: st.color || C.muted, marginTop: 6 }}>
         {d.nextStep ? `→ ${d.nextStep}` : "→ следующий шаг не задан"}
         {d.nextDate && ` · ${d.nextDate}`}
-        {overdue && " · ТРЕБУЕТ ДВИЖЕНИЯ"}
+        {st.label && ` · ${st.label}`}
       </div>
       {d.blocker && <div style={{ fontSize: 12, color: C.red, marginTop: 4 }}>Блокер: {d.blocker}</div>}
       {open && (
@@ -61,6 +71,33 @@ function DealCard({ d, today, onChange, onDelete }) {
   );
 }
 
+// Быстрый выбор срока
+function DateChips({ value, onChange, today }) {
+  const friday = (() => { let d = today; for (let i = 1; i <= 7; i++) { d = addDaysIso(today, i); if (new Date(d + "T00:00:00Z").getUTCDay() === 5) break; } return d; })();
+  const opts = [["Сегодня", today], ["Завтра", addDaysIso(today, 1)], ["Пятница", friday], ["След. неделя", addDaysIso(today, 7)]];
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      {opts.map(([label, iso]) => (
+        <button key={label} onClick={() => onChange(iso)} style={{
+          padding: "8px 12px", borderRadius: 4, cursor: "pointer", fontSize: 13, minHeight: 40,
+          border: `1px solid ${value === iso ? C.gold : C.line}`,
+          background: value === iso ? "rgba(200,164,92,.12)" : "transparent",
+          color: value === iso ? C.gold : C.muted, fontFamily: FONT.sans,
+        }}>{label}</button>
+      ))}
+      <input type="date" value={value} aria-label="Дата шага" onChange={(e) => onChange(e.target.value)}
+        style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 4, color: C.ivory, padding: "8px 10px", fontSize: 13, fontFamily: FONT.mono, colorScheme: "dark" }} />
+    </div>
+  );
+}
+
+function addDaysIso(iso, n) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+
 export default function Deals({ deals, setDeals, today }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState(emptyDeal());
@@ -75,14 +112,15 @@ export default function Deals({ deals, setDeals, today }) {
     setAdding(false);
   };
 
-  const sorted = [...deals].sort((a, b) => {
-    const ao = a.nextDate && a.nextDate <= today && a.stage < 9 ? 0 : 1;
-    const bo = b.nextDate && b.nextDate <= today && b.stage < 9 ? 0 : 1;
-    if (ao !== bo) return ao - bo;
-    return (a.nextDate || "9999") < (b.nextDate || "9999") ? -1 : 1;
-  });
+  const rank = (d) => {
+    const st = dealStatus(d, today);
+    return st.kind === "overdue" ? 0 : st.kind === "today" ? 1 : st.kind === "nostep" ? 2 : 3;
+  };
+  const sorted = [...deals].sort((a, b) => rank(a) - rank(b) || ((a.nextDate || "9999") < (b.nextDate || "9999") ? -1 : 1));
 
   const pipeline = deals.filter((d) => d.stage >= 6).length;
+  const nOverdue = deals.filter((d) => dealStatus(d, today).kind === "overdue").length;
+  const nToday = deals.filter((d) => dealStatus(d, today).kind === "today").length;
 
   return (
     <>
@@ -90,7 +128,8 @@ export default function Deals({ deals, setDeals, today }) {
         <div style={{ display: "flex", gap: 20, marginBottom: 14, fontFamily: FONT.mono, fontSize: 12, color: C.muted, flexWrap: "wrap" }}>
           <span>Всего: <span style={{ color: C.ivory }}>{deals.length}</span></span>
           <span>Signed+: <span style={{ color: C.green }}>{pipeline}</span></span>
-          <span>Требуют движения: <span style={{ color: C.red }}>{deals.filter((d) => d.nextDate && d.nextDate <= today && d.stage < 9).length}</span></span>
+          <span>Просрочено: <span style={{ color: C.red }}>{nOverdue}</span></span>
+          <span>Сегодня: <span style={{ color: C.gold }}>{nToday}</span></span>
         </div>
         {sorted.map((d) => (
           <DealCard key={d.id} d={d} today={today} onChange={(p) => update(d.id, p)} onDelete={() => remove(d.id)} />
@@ -100,15 +139,17 @@ export default function Deals({ deals, setDeals, today }) {
         )}
         {adding ? (
           <div style={{ border: `1px solid ${C.goldDim}`, borderRadius: 6, padding: 14, marginTop: 6 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="Название" value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} placeholder="Ovanti financing" />
-              <Field label="Компания / сторона" value={draft.company} onChange={(v) => setDraft({ ...draft, company: v })} />
-            </div>
+            <Field label="Название" value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} placeholder="Ovanti financing" />
             <Field label="Следующий шаг" value={draft.nextStep} onChange={(v) => setDraft({ ...draft, nextStep: v })} placeholder="Конкретное действие, не «продолжить общение»" />
+            <div style={{ fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted, fontFamily: FONT.mono, marginBottom: 8 }}>Когда сделать</div>
+            <div style={{ marginBottom: 14 }}>
+              <DateChips value={draft.nextDate} onChange={(v) => setDraft({ ...draft, nextDate: v })} today={today} />
+            </div>
             <div style={{ display: "flex", gap: 10 }}>
               <Btn primary onClick={add}>Добавить сделку</Btn>
               <Btn onClick={() => setAdding(false)}>Отмена</Btn>
             </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>Компания, контакт, сумма, блокер — потом, внутри карточки.</div>
           </div>
         ) : (
           <Btn primary onClick={() => setAdding(true)}>+ Новая сделка</Btn>
