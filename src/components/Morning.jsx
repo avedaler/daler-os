@@ -21,6 +21,12 @@ export default function Morning({ s, up, date }) {
 
       <Section kicker="вопрос архитектора" title="Что сегодня максимально увеличит стоимость моих компаний?">
         <Field label="Ответ" value={s.architectQ} onChange={(v) => up({ architectQ: v })} placeholder="Одно высокорычажное действие…" rows={2} />
+        {s.architectQ.trim() && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: -4, marginBottom: 4, color: C.green, fontSize: 13 }}>
+            <span>✓</span>
+            <span>Зафиксировано как фокус дня — показан наверху вкладки «День»</span>
+          </div>
+        )}
       </Section>
 
       <Section kicker="протокол 1–1–1" title="Утренний протокол">

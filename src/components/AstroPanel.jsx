@@ -3,6 +3,7 @@ import { C, FONT } from "../constants";
 import { Section, Field } from "./atoms";
 import { computeAstro, MOON_SIGN_TEXT } from "../lib/astro";
 import { PD_MEANING, personalDay } from "../lib/numerology";
+import { prettyDate } from "../lib/date";
 
 const MOON_GLYPH = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"];
 
@@ -20,6 +21,9 @@ export default function AstroPanel({ date, pasted, onPasted }) {
 
   return (
     <Section kicker="транзиты дня · расчёт по эфемериде" title="Астрослой">
+      <div style={{ fontSize: 12, color: C.gold, fontFamily: FONT.mono, letterSpacing: ".06em", marginTop: -8, marginBottom: 12, borderBottom: `1px solid ${C.line}`, paddingBottom: 10 }}>
+        {prettyDate(date)}
+      </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
         <span style={{ fontFamily: FONT.serif, fontSize: 22, color: C.gold }}>{MOON_GLYPH[a.moonSign]} Луна в {a.moonSignLoc}</span>
         <span style={{ fontSize: 12, color: C.muted, fontFamily: FONT.mono }}>{a.phase.name} · {a.illum}%</span>
