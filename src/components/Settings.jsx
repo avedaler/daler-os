@@ -1,10 +1,123 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { C, FONT } from "../constants";
 import { Section, CheckRow, Btn } from "./atoms";
 import { askPermission } from "../lib/notify";
 import { exportMonth } from "../lib/export";
 import { exportAllData, importAllData, LAST_EXPORT_KEY, daysSinceExport } from "../lib/store";
 import { hasLock, setPin, verifyPin, clearLock, lockNow, hasBiometric, biometricAvailable, registerBiometric, disableBiometric } from "../lib/lock";
+import { getConfig, setConfig, cloudConfigured, currentUser, signUp, signIn, signOut, syncAll, lastSync, SETUP_SQL } from "../lib/cloud";
+
+function CloudSettings() {
+  const [cfg, setCfg] = useState(getConfig());
+  const [user, setUser] = useState(null);
+  const [url, setUrl] = useState(cfg?.url || "");
+  const [anonKey, setAnonKey] = useState(cfg?.anonKey || "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [showSql, setShowSql] = useState(false);
+  const say = (m) => setMsg(m);
+
+  useEffect(() => { if (cloudConfigured()) currentUser().then(setUser); }, []);
+
+  const connect = () => {
+    const u = url.trim().replace(/\/$/, "");
+    if (!/^https:\/\/.+\.supabase\.co$/.test(u)) return say("URL должен быть вида https://xxxx.supabase.co");
+    if (anonKey.trim().length < 30) return say("Похоже, это не anon-ключ");
+    setConfig({ url: u, anonKey: anonKey.trim() });
+    setCfg(getConfig());
+    say("Облако подключено — теперь войди или создай аккаунт");
+  };
+
+  const doAuth = async (mode) => {
+    if (!email.includes("@") || password.length < 6) return say("Email и пароль (мин. 6 символов)");
+    setBusy(true);
+    try {
+      if (mode === "up") {
+        await signUp(email, password);
+        say("Аккаунт создан. Если вход не произошёл — подтверди email по письму и войди.");
+      } else {
+        await signIn(email, password);
+      }
+      const u = await currentUser();
+      setUser(u);
+      if (u) {
+        say("Вход выполнен, синхронизирую…");
+        const r = await syncAll();
+        say(r.ok ? `Синхронизировано: получено ${r.pulled}, отправлено ${r.pushed}` : `Вход есть, но синхронизация: ${r.reason}`);
+      }
+    } catch (e) {
+      say(`Ошибка: ${e.message}`);
+    }
+    setBusy(false);
+  };
+
+  const doSync = async () => {
+    setBusy(true);
+    const r = await syncAll();
+    say(r.ok ? `Готово: получено ${r.pulled}, отправлено ${r.pushed}` : `Не вышло: ${r.reason}`);
+    setBusy(false);
+  };
+
+  const field = (label, val, setVal, type = "text", placeholder = "") => (
+    <label style={{ display: "block", marginBottom: 12 }}>
+      <div style={{ fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted, marginBottom: 6, fontFamily: FONT.mono }}>{label}</div>
+      <input type={type} value={val} placeholder={placeholder} autoComplete={type === "password" ? "current-password" : "off"} aria-label={label}
+        onChange={(e) => setVal(e.target.value)}
+        style={{ width: "100%", boxSizing: "border-box", background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: C.ivory, padding: "10px 12px", fontSize: 14, fontFamily: FONT.sans }} />
+    </label>
+  );
+
+  return (
+    <Section kicker="supabase · синхронизация устройств" title="Облако">
+      {!cfg ? (
+        <>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 1.6 }}>
+            Один раз: на supabase.com создай проект (регион Singapore — ближе к KL) → SQL Editor → выполни SQL (кнопка ниже) →
+            Settings → API → скопируй Project URL и anon public key сюда.
+          </div>
+          <Btn onClick={() => setShowSql(!showSql)}>{showSql ? "Скрыть SQL" : "Показать SQL для таблицы"}</Btn>
+          {showSql && (
+            <pre style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, padding: 12, fontSize: 11, color: C.ivory, overflowX: "auto", margin: "12px 0" }}>{SETUP_SQL}</pre>
+          )}
+          <div style={{ marginTop: 12 }}>
+            {field("Project URL", url, setUrl, "text", "https://xxxx.supabase.co")}
+            {field("anon public key", anonKey, setAnonKey, "text", "eyJhbGciOi…")}
+            <Btn primary onClick={connect}>Подключить облако</Btn>
+          </div>
+        </>
+      ) : !user ? (
+        <>
+          <div style={{ fontSize: 13, color: C.green, marginBottom: 10 }}>✓ Проект подключён: {cfg.url.replace("https://", "")}</div>
+          {field("Email", email, setEmail, "email", "you@example.com")}
+          {field("Пароль", password, setPassword, "password")}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Btn primary onClick={() => !busy && doAuth("in")}>Войти</Btn>
+            <Btn onClick={() => !busy && doAuth("up")}>Создать аккаунт</Btn>
+            <Btn onClick={() => { setConfig(null); setCfg(null); say("Облако отключено"); }}>Отключить облако</Btn>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 13, color: C.green, marginBottom: 10 }}>
+            ✓ Вошёл как {user.email}
+            {lastSync() ? ` · последняя сверка ${new Date(lastSync()).toLocaleString("ru-RU")}` : ""}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Btn primary onClick={doSync}>Синхронизировать сейчас</Btn>
+            <Btn onClick={async () => { await signOut(); setUser(null); say("Вышел из аккаунта — данные остались на устройстве"); }}>Выйти</Btn>
+          </div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 10 }}>
+            Каждое сохранение улетает в облако фоном; при запуске приложение сверяется и берёт более свежую версию каждой записи.
+            Войди этим же аккаунтом на втором устройстве — история подтянется.
+          </div>
+        </>
+      )}
+      <div style={{ minHeight: 20, fontSize: 13, color: C.gold, fontFamily: FONT.mono, marginTop: 10 }}>{msg}</div>
+    </Section>
+  );
+}
 
 function LockSettings({ onLock }) {
   const [enabled, setEnabled] = useState(hasLock());
@@ -155,6 +268,8 @@ export default function Settings({ settings, upSettings, date, onLock }) {
   return (
     <>
       <LockSettings onLock={onLock} />
+
+      <CloudSettings />
 
       <Section kicker="критично" title="Бэкап данных">
         {staleDays >= 7 && (

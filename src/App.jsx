@@ -16,6 +16,7 @@ import Forecast from "./components/Forecast";
 import Settings from "./components/Settings";
 import LockScreen from "./components/LockScreen";
 import { hasLock, isUnlockedThisSession } from "./lib/lock";
+import { cloudConfigured, currentUser, syncAll } from "./lib/cloud";
 
 export default function App() {
   const [locked, setLocked] = useState(() => hasLock() && !isUnlockedThisSession());
@@ -45,10 +46,25 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  // при старте: если облако настроено и есть вход — сначала сверка (макс. 6 сек)
+  const syncedOnce = useRef(false);
+  const [syncNote, setSyncNote] = useState("");
+
   // загрузка дня, настроек, сделок, North Star прошлой недели
   const skipSave = useRef(true);
   useEffect(() => {
     (async () => {
+      if (!syncedOnce.current && cloudConfigured()) {
+        syncedOnce.current = true;
+        try {
+          if (await currentUser()) {
+            setSyncNote("синхронизация…");
+            const r = await Promise.race([syncAll(), new Promise((rs) => setTimeout(() => rs({ ok: false, reason: "таймаут" }), 6000))]);
+            setSyncNote(r.ok ? (r.pulled ? `облако: получено ${r.pulled}` : "облако: актуально") : "");
+            setTimeout(() => setSyncNote(""), 3000);
+          }
+        } catch { /* офлайн */ }
+      }
       try {
         const v = await loadDay(date);
         skipSave.current = true;
@@ -174,7 +190,7 @@ export default function App() {
               {b && <span style={{ fontSize: 10, fontFamily: FONT.mono, marginLeft: 6, color: b.includes("!") || b === "due" ? C.red : C.muted }}>{b}</span>}
             </button>
           ))}
-          <div style={{ marginLeft: "auto", alignSelf: "center", fontSize: 11, color: C.muted, fontFamily: FONT.mono }}>{saveState}</div>
+          <div style={{ marginLeft: "auto", alignSelf: "center", fontSize: 11, color: C.muted, fontFamily: FONT.mono }}>{syncNote || saveState}</div>
         </div>
 
         {tab === "morning" && <Morning s={s} up={up} date={date} settings={settings} upSettings={upSettings} />}
