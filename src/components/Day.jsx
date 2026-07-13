@@ -1,11 +1,37 @@
-import { C, FONT, STAGES } from "../constants";
+import { useState, useEffect } from "react";
+import { C, FONT, STAGES, HOBBIES } from "../constants";
 import { Section, CheckRow, Field, Btn } from "./atoms";
 import ArchitectTimer from "./ArchitectTimer";
 import TaskFilter from "./TaskFilter";
+import { loadDay } from "../lib/store";
+import { addDays } from "../lib/date";
 
-export default function Day({ s, up, deals, today, goDeals }) {
+// Серия дней подряд (до вчера включительно), когда привычка соблюдалась
+function useStreaks(date) {
+  const [streaks, setStreaks] = useState({ noSmoke: 0, noAlcohol: 0 });
+  useEffect(() => {
+    (async () => {
+      const out = { noSmoke: 0, noAlcohol: 0 };
+      for (const key of ["noSmoke", "noAlcohol"]) {
+        for (let i = 1; i <= 90; i++) {
+          const v = await loadDay(addDays(date, -i));
+          if (v?.habits?.[key]) out[key]++;
+          else break;
+        }
+      }
+      setStreaks(out);
+    })();
+  }, [date]);
+  return streaks;
+}
+
+export default function Day({ s, up, deals, today, date, goDeals }) {
   const setBlock = (k, v) => up((prev) => ({ blocks: { ...prev.blocks, [k]: v } }));
+  const setHabit = (patch) => up((prev) => ({ habits: { ...prev.habits, ...patch } }));
   const due = deals.filter((d) => d.nextDate && d.nextDate <= today && d.stage < 9);
+  const streaks = useStreaks(date);
+  const h = s.habits;
+  const streakLabel = (base, n, on) => `${base}${n + (on ? 1 : 0) > 0 ? ` · серия ${n + (on ? 1 : 0)} дн.` : ""}`;
 
   return (
     <>
@@ -41,6 +67,34 @@ export default function Day({ s, up, deals, today, goDeals }) {
         <ArchitectTimer onComplete={() => setBlock("architect", true)} />
         <Field label="Результат часа — артефакт, не размышление" value={s.architectResult} onChange={(v) => up({ architectResult: v })} placeholder="Решение / memo / список инвесторов / убить проект X" />
         <CheckRow on={s.blocks.architect} onClick={() => setBlock("architect", !s.blocks.architect)} label="Час проведён, артефакт зафиксирован" />
+      </Section>
+
+      <Section kicker="контроль исполнения · ежедневно" title="Дисциплина и развитие">
+        <CheckRow gold on={h.noSmoke} onClick={() => setHabit({ noSmoke: !h.noSmoke })} label={streakLabel("Не курил", streaks.noSmoke, h.noSmoke)} />
+        <CheckRow gold on={h.noAlcohol} onClick={() => setHabit({ noAlcohol: !h.noAlcohol })} label={streakLabel("Не пил", streaks.noAlcohol, h.noAlcohol)} />
+        <div style={{ borderTop: `1px solid ${C.line}`, margin: "12px 0", paddingTop: 12 }}>
+          <div style={{ fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: C.gold, fontFamily: FONT.mono, marginBottom: 8 }}>Цель — срочно: бицепс и грудь</div>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <CheckRow on={h.biceps} onClick={() => setHabit({ biceps: !h.biceps })} label="Бицепс прокачан" />
+            <CheckRow on={h.chest} onClick={() => setHabit({ chest: !h.chest })} label="Грудь прокачана" />
+          </div>
+        </div>
+        <CheckRow on={h.logic} onClick={() => setHabit({ logic: !h.logic })} label="Изучал законы логики (минимум 20 минут)" />
+        <Field label="Выход из зоны комфорта — что сделал (факт)" value={h.comfortExit} onChange={(v) => setHabit({ comfortExit: v })} placeholder="Звонок, который откладывал / незнакомая комната / сложный разговор" />
+        <Field label="Социальная встреча в высоких кругах — с кем и результат" value={h.social} onChange={(v) => setHabit({ social: v })} placeholder="Имя, круг, следующий шаг" />
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: C.muted, fontFamily: FONT.mono, marginBottom: 8 }}>Хобби сегодня</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {HOBBIES.map((hb) => (
+              <button key={hb} onClick={() => setHabit({ hobby: h.hobby === hb ? "" : hb })} style={{
+                padding: "7px 14px", borderRadius: 4, cursor: "pointer", fontSize: 13, minHeight: 36,
+                border: `1px solid ${h.hobby === hb ? C.green : C.line}`,
+                background: h.hobby === hb ? "rgba(111,175,135,.12)" : "transparent",
+                color: h.hobby === hb ? C.green : C.muted, fontFamily: FONT.sans,
+              }}>{hb}{h.hobby === hb ? " ✓" : ""}</button>
+            ))}
+          </div>
+        </div>
       </Section>
 
       <Section kicker="приоритет 4" title="Вечер: ментальная разгрузка">

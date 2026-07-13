@@ -19,6 +19,7 @@ function stats(rows) {
   const filled = rows.filter((r) => r.data);
   const scores = filled.map((r) => dayScore({ ...emptyDay(), ...r.data }));
   const avg = scores.length ? scores.reduce((a, b) => a + b.pts, 0) / scores.length : 0;
+  const hab = (k) => filled.filter((r) => r.data.habits?.[k]).length;
   return {
     filled: filled.length,
     avg: Math.round(avg * 10) / 10,
@@ -26,6 +27,14 @@ function stats(rows) {
     trainings: filled.filter((r) => r.data.blocks?.health).length,
     architect: filled.filter((r) => r.data.blocks?.architect).length,
     shutdowns: filled.filter((r) => r.data.shutdown).length,
+    noSmoke: hab("noSmoke"),
+    noAlcohol: hab("noAlcohol"),
+    biceps: hab("biceps"),
+    chest: hab("chest"),
+    logic: hab("logic"),
+    comfort: filled.filter((r) => r.data.habits?.comfortExit?.trim()).length,
+    social: filled.filter((r) => r.data.habits?.social?.trim()).length,
+    hobbies: filled.filter((r) => r.data.habits?.hobby).map((r) => r.data.habits.hobby),
   };
 }
 
@@ -70,6 +79,21 @@ export default function Week({ date }) {
             {verdict.text.toUpperCase()}
           </div>
         )}
+      </Section>
+
+      <Section kicker="учёт · дисциплина и развитие" title="Привычки недели">
+        <div style={{ display: "flex", gap: 26, flexWrap: "wrap", marginBottom: 6 }}>
+          <Stat label="БЕЗ СИГАРЕТ" value={`${st.noSmoke}/7`} color={st.noSmoke === 7 ? C.green : st.noSmoke >= 5 ? C.gold : C.red} />
+          <Stat label="БЕЗ АЛКОГОЛЯ" value={`${st.noAlcohol}/7`} color={st.noAlcohol === 7 ? C.green : st.noAlcohol >= 5 ? C.gold : C.red} />
+          <Stat label="БИЦЕПС" value={st.biceps} color={st.biceps >= 2 ? C.green : C.gold} />
+          <Stat label="ГРУДЬ" value={st.chest} color={st.chest >= 2 ? C.green : C.gold} />
+          <Stat label="ЛОГИКА" value={`${st.logic}/7`} />
+          <Stat label="ЗОНА КОМФОРТА" value={st.comfort} color={st.comfort > 0 ? C.green : C.muted} />
+          <Stat label="ВСТРЕЧИ В КРУГАХ" value={st.social} color={st.social > 0 ? C.green : C.muted} />
+        </div>
+        <div style={{ fontSize: 13, color: C.muted }}>
+          Хобби: {st.hobbies.length ? st.hobbies.join(" · ") : "не было — Overlanding / Golf range / Padel ждут"}
+        </div>
       </Section>
 
       <Section kicker="дни недели" title="Понедельник — воскресенье">

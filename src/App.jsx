@@ -173,7 +173,7 @@ export default function App() {
         </div>
 
         {tab === "morning" && <Morning s={s} up={up} date={date} settings={settings} upSettings={upSettings} />}
-        {tab === "day" && <Day s={s} up={up} deals={deals} today={now.date} goDeals={() => setTab("deals")} />}
+        {tab === "day" && <Day s={s} up={up} deals={deals} today={now.date} date={date} goDeals={() => setTab("deals")} />}
         {tab === "evening" && <Evening s={s} up={up} />}
         {tab === "deals" && <Deals deals={deals} setDeals={setDeals} today={now.date} />}
         {tab === "forecast" && <Forecast today={now.date} />}

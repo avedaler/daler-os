@@ -34,6 +34,18 @@ export async function exportMonth(ym) {
       lines.push("", "**Победы:**");
       wins.forEach((w) => lines.push(`- ${w}`));
     }
+    const h = s.habits || {};
+    const habitBits = [
+      h.noSmoke && "не курил",
+      h.noAlcohol && "не пил",
+      h.biceps && "бицепс",
+      h.chest && "грудь",
+      h.logic && "логика",
+      h.hobby && `хобби: ${h.hobby}`,
+    ].filter(Boolean);
+    if (habitBits.length) lines.push(`**Дисциплина:** ${habitBits.join(" · ")}`);
+    if (h.comfortExit) lines.push(`**Зона комфорта:** ${h.comfortExit}`);
+    if (h.social) lines.push(`**Встреча в кругах:** ${h.social}`);
     if (s.value) lines.push(`**Увеличило стоимость:** ${s.value}`);
     if (s.noise) lines.push(`**Шум:** ${s.noise}`);
     if (s.tomorrow) lines.push(`**Главное решение завтра:** ${s.tomorrow}`);

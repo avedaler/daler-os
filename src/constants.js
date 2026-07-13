@@ -50,7 +50,19 @@ export const emptyDay = () => ({
   noise: "",
   tomorrow: "",
   shutdown: false,
+  habits: {
+    noSmoke: false,
+    noAlcohol: false,
+    logic: false,
+    biceps: false,
+    chest: false,
+    comfortExit: "",
+    social: "",
+    hobby: "",
+  },
 });
+
+export const HOBBIES = ["Overlanding", "Golf range", "Padel"];
 
 // Стадии сделки: формула Master OS
 export const STAGES = ["Idea", "Qualified", "Introduced", "Meeting", "Proposal", "Negotiation", "Signed", "Paid", "Live", "Recurring"];
