@@ -12,6 +12,7 @@ import Evening from "./components/Evening";
 import Week from "./components/Week";
 import CeoReview from "./components/CeoReview";
 import Deals from "./components/Deals";
+import Forecast from "./components/Forecast";
 import Settings from "./components/Settings";
 
 export default function App() {
@@ -106,6 +107,7 @@ export default function App() {
     ["day", "День", badge(prog.day)],
     ["evening", "Вечер", badge(prog.evening)],
     ["deals", "Сделки", dealsDue ? `${dealsDue}!` : null],
+    ["forecast", "Расчёт", null],
     ["week", "Неделя", null],
     ["ceo", "CEO", isFriday ? "due" : null],
     ["settings", "⚙", backupStale ? "!" : null],
@@ -174,6 +176,7 @@ export default function App() {
         {tab === "day" && <Day s={s} up={up} deals={deals} today={now.date} goDeals={() => setTab("deals")} />}
         {tab === "evening" && <Evening s={s} up={up} />}
         {tab === "deals" && <Deals deals={deals} setDeals={setDeals} today={now.date} />}
+        {tab === "forecast" && <Forecast today={now.date} />}
         {tab === "week" && <Week date={date} />}
         {tab === "ceo" && <CeoReview date={date} />}
         {tab === "settings" && <Settings settings={settings} upSettings={upSettings} date={date} />}
