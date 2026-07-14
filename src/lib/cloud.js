@@ -10,7 +10,14 @@ const TABLE = "daleros_kv";
 
 // Какие ключи синхронизируем
 const syncable = (k) =>
-  typeof k === "string" && (k.startsWith("day:") || k.startsWith("week:") || k === "deals" || k === "settings");
+  typeof k === "string" && (
+    k.startsWith("day:") ||
+    k.startsWith("week:") ||
+    k === "deals" ||
+    k === "settings" ||
+    k === "healthProfile" ||
+    k === "trainingPlan"
+  );
 
 export function getConfig() {
   try { return JSON.parse(localStorage.getItem(CFG_KEY)) || null; } catch { return null; }

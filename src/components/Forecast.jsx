@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { C, FONT, emptyDay } from "../constants";
-import { Section, Btn } from "./atoms";
+import { C, FONT, migrateDay } from "../constants";
+import { Section, Btn, StatusBadge } from "./atoms";
 import { computeAstro, astroToText, SIGNS } from "../lib/astro";
 import { personalDay, PD_MEANING } from "../lib/numerology";
 import { prettyDate, weekday, addDays } from "../lib/date";
@@ -88,6 +88,38 @@ function rangeToMarkdown(from, to, r) {
   return L.join("\n");
 }
 
+export function TodayForecast({ date, compact = false }) {
+  const result = useMemo(() => {
+    const astro = computeAstro(date);
+    const numerology = personalDay(date);
+    return { astro, numerology, fitness: dealFitness(astro, numerology.pd) };
+  }, [date]);
+  const { astro, numerology, fitness } = result;
+  const fitnessLabel = fitness >= 2 ? "Высокая" : fitness <= -2 ? "Низкая" : "Нейтральная";
+  const fitnessTone = fitness >= 2 ? "green" : fitness <= -2 ? "red" : "gold";
+  if (compact) return <section className="command-rail-section command-context" aria-label="Контекст дня">
+    <div className="command-rail-heading"><span className="eyebrow">Контекст дня</span><StatusBadge tone={fitnessTone}>сделки · {fitnessLabel}</StatusBadge></div>
+    <div className="command-context-grid">
+      <div><span>Личный день</span><strong>{numerology.pd}</strong></div>
+      <div><span>Луна</span><strong>В {astro.moonSignLoc}</strong></div>
+      <div><span>Окна / риски</span><strong>{astro.windows.length} / {astro.cautions.length}</strong></div>
+    </div>
+    <p><strong>Контекст, не команда.</strong> {astro.cautions[0]?.text || astro.windows[0]?.text || "Решения принимаются по фактам, срокам и ответственным."}</p>
+  </section>;
+  return <section className="today-forecast" aria-label="Расчет дня">
+    <div className="today-forecast-head">
+      <div><span className="kicker">Расчет дня</span><h2>Астрономический и личный контекст</h2></div>
+      <StatusBadge tone={fitnessTone}>Сделки · {fitnessLabel}</StatusBadge>
+    </div>
+    <div className="forecast-metrics">
+      <div><span>Личный день</span><strong>{numerology.pd}</strong><small>{PD_MEANING[numerology.pd]}</small></div>
+      <div><span>Луна</span><strong>В {astro.moonSignLoc}</strong><small>{astro.phase.name} · освещенность {astro.illum}%</small></div>
+      <div><span>Окна / риски</span><strong>{astro.windows.length} / {astro.cautions.length}</strong><small>{astro.retro.length ? `Ретроградны: ${astro.retro.join(", ")}` : "Ретроградных факторов нет"}</small></div>
+    </div>
+    <div className="forecast-context"><strong>Контекст, не команда.</strong><span>{astro.cautions[0]?.text || astro.windows[0]?.text || "Решения принимаются по фактам, срокам и ответственным."}</span></div>
+  </section>;
+}
+
 export default function Forecast({ today }) {
   const [mode, setMode] = useState("day");
   const [anchor, setAnchor] = useState(today);
@@ -111,7 +143,7 @@ export default function Forecast({ today }) {
         const v = await loadDay(d);
         if (!v) continue;
         filled++;
-        ptsSum += dayScore({ ...emptyDay(), ...v }).pts;
+        ptsSum += dayScore(migrateDay(v)).pts;
         if (v.proofDone) proofs++;
       }
       setFacts(filled ? { filled, avg: Math.round((ptsSum / filled) * 10) / 10, proofs } : null);
