@@ -53,6 +53,22 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .score-pill strong { font: 500 20px/1 var(--mono); }
 .score-pill span { color: var(--muted); font: 11px/1 var(--mono); }
 
+.day-switcher { min-height: 58px; display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-quiet); margin-bottom: 12px; padding: 7px 9px; }
+.day-switcher-main { min-width: 0; display: grid; grid-template-columns: 40px minmax(190px, 1fr) 40px; align-items: center; gap: 5px; }
+.day-switcher-icon { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
+.day-switcher-icon:hover { color: var(--gold); border-color: var(--border); background: var(--surface-raised); }
+.day-switcher-picker { min-width: 0; height: 42px; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 8px; border: 1px solid rgba(209, 173, 97, .4); border-radius: 7px; color: var(--gold); padding: 4px 10px; cursor: pointer; }
+.day-switcher-picker > span { min-width: 0; display: grid; gap: 1px; }
+.day-switcher-picker small { color: var(--muted); font-size: 9px; line-height: 1; }
+.day-switcher-picker input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--text); font: 500 12px/1.2 var(--mono); padding: 0; cursor: pointer; }
+.day-switcher-picker input:focus-visible { outline: 0; }
+.day-switcher-presets { display: inline-flex; min-width: 0; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.day-switcher-presets button { min-height: 40px; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); padding: 0 13px; cursor: pointer; }
+.day-switcher-presets button:last-child { border-right: 0; }
+.day-switcher-presets button:hover { color: var(--text); }
+.day-switcher-presets button.active { background: rgba(209, 173, 97, .12); color: var(--gold); }
+.day-switcher > .status-badge { margin-left: auto; }
+
 .kicker, .eyebrow { color: var(--gold); font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .1em; }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .rule { border-top: 1px solid var(--border); }
@@ -570,6 +586,11 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
   .sync-pill { min-height: 30px; padding: 0 9px; font-size: 10px; }
   .score-pill { height: 36px; min-width: 54px; }
   .score-pill strong { font-size: 17px; }
+  .day-switcher { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 7px; }
+  .day-switcher-main { grid-column: 1 / -1; grid-template-columns: 40px minmax(0, 1fr) 40px; width: 100%; }
+  .day-switcher-presets { width: 100%; }
+  .day-switcher-presets button { flex: 1; padding: 0 10px; }
+  .day-switcher > .status-badge { margin-left: 0; justify-self: end; }
   .command-compass { margin-bottom: 10px; }
   .command-compass > div { padding: 13px; }
   .command-compass.is-started > div { padding: 13px; }

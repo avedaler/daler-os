@@ -48,6 +48,13 @@ const PAGE_TITLES = {
   more: "Система",
 };
 
+function dayKicker(date, today) {
+  if (date === today) return "Сегодня";
+  if (date === addDays(today, 1)) return "Завтра";
+  if (date === addDays(today, -1)) return "Вчера";
+  return "Выбранный день";
+}
+
 export default function App() {
   const [locked, setLocked] = useState(() => hasLock() && !isUnlockedThisSession());
   const [now, setNow] = useState(klNow());
@@ -66,20 +73,40 @@ export default function App() {
   const [syncNote, setSyncNote] = useState("");
   const saveTimer = useRef(null);
   const settingsRef = useRef(settings);
+  const dayRef = useRef(s);
+  const dateRef = useRef(date);
+  const loadedRef = useRef(loaded);
+  const loadedDateRef = useRef(loadedDate);
   const syncedOnce = useRef(false);
   const skipSave = useRef(true);
   settingsRef.current = settings;
+  dayRef.current = s;
+  dateRef.current = date;
+  loadedRef.current = loaded;
+  loadedDateRef.current = loadedDate;
+
+  const selectDate = useCallback((nextDate) => {
+    const currentDate = dateRef.current;
+    if (!nextDate || nextDate === currentDate) return;
+    clearTimeout(saveTimer.current);
+    if (loadedRef.current && loadedDateRef.current === currentDate) {
+      saveDay(currentDate, dayRef.current)
+        .then(() => setSaveState("сохранено"))
+        .catch(() => setSaveState("ошибка сохранения"));
+    }
+    setDate(nextDate);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
       const next = klNow();
       setNow((previous) => {
-        if (previous.date !== next.date && date === previous.date) setDate(next.date);
+        if (previous.date !== next.date && dateRef.current === previous.date) selectDate(next.date);
         return next;
       });
     }, 30000);
     return () => clearInterval(timer);
-  }, [date]);
+  }, [selectDate]);
 
   useEffect(() => startScheduler(() => settingsRef.current), []);
 
@@ -195,7 +222,6 @@ export default function App() {
 
   const navigate = (nextTab) => {
     setTab(nextTab);
-    if (nextTab === "today") setDate(now.date);
   };
 
   if (locked) return <LockScreen onUnlock={() => setLocked(false)} />;
@@ -216,7 +242,7 @@ export default function App() {
         <main className={`workspace ${tab === "today" ? "workspace-wide" : ""}`}>
           <header className="page-header">
             <div>
-              <span className="kicker">Сегодня · Kuala Lumpur</span>
+              <span className="kicker">{tab === "today" ? dayKicker(date, now.date) : "DALER OS"} · Kuala Lumpur</span>
               <h1>{tab === "today" ? prettyDate(date) : PAGE_TITLES[tab]}</h1>
               {tab !== "today" && <span className="header-date">{prettyDate(date)}</span>}
             </div>
@@ -226,9 +252,9 @@ export default function App() {
             </div>
           </header>
 
-          {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} />}
+          {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} today={now.date} setDate={selectDate} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} />}
           {tab === "deals" && <div className="standard-page"><Deals deals={deals} setDeals={setDeals} today={now.date} /></div>}
-          {tab === "review" && <div className="standard-page"><Overview date={date} setDate={setDate} today={now.date} sub={reviewView} setSub={setReviewView} /></div>}
+          {tab === "review" && <div className="standard-page"><Overview date={date} setDate={selectDate} today={now.date} sub={reviewView} setSub={setReviewView} /></div>}
           {tab === "more" && <div className="standard-page"><More s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} onLock={() => setLocked(true)} /></div>}
         </main>
 

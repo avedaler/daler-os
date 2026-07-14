@@ -136,7 +136,7 @@ export function TimelineBlock({ id, title, summary, active, complete, children, 
   );
 }
 
-export function DailyCompass({ s, up, date, northStar, deals, yesterdayOutcome, onContinue }) {
+export function DailyCompass({ s, up, date, today, northStar, deals, yesterdayOutcome, onContinue }) {
   const protocol = s.dailyProtocol;
   const outcome = s.primaryOutcome;
   const text = primaryOutcomeText(outcome);
@@ -181,7 +181,7 @@ export function DailyCompass({ s, up, date, northStar, deals, yesterdayOutcome, 
       <div className="command-start">
         <span className="eyebrow">{s.dayStarted ? "День запущен" : "Готовность"}</span>
         <Btn primary big disabled={!protocol.compass.stateBand || !text.trim()} onClick={primaryAction}>
-          {s.dayStarted ? "Продолжить фокус" : "Начать день"}<ArrowRight size={17} aria-hidden="true" />
+          {s.dayStarted ? "Продолжить фокус" : date === today ? "Начать сегодня" : "Запустить выбранный день"}<ArrowRight size={17} aria-hidden="true" />
         </Btn>
         {!s.dayStarted && <small>Сначала состояние и один измеримый факт.</small>}
       </div>
