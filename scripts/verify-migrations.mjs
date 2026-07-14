@@ -1,11 +1,21 @@
 import assert from "node:assert/strict";
 import {
+  AFFIRMATIONS,
+  DECLARATION,
   defaultTrainingPlan,
   migrateDay,
   migrateHealthProfile,
   primaryOutcomeText,
 } from "../src/constants.js";
 import { calendarMetrics, dailyEvents } from "../src/lib/achievements.js";
+
+assert.deepEqual(AFFIRMATIONS, [
+  "Мои финансовые доходы сейчас увеличиваются",
+  "Я богат, я здоров и я счастлив",
+  "Мирное изобилие — моё наследие. Порядок установлен во мне",
+]);
+assert.match(DECLARATION, /дисциплинированный создатель ценности, распределитель капитала и closer/);
+assert.match(DECLARATION, /Каждую неделю я измеряю факты, закрываю лишнее и снова выбираю главное/);
 
 const legacyDay = {
   proof: "Подписан договор",

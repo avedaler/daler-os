@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Activity,
   ArrowRight,
+  BookOpen,
   BriefcaseBusiness,
   CalendarDays,
   Check,
@@ -12,14 +13,14 @@ import {
   FileText,
   Moon,
   Pill,
-  Pin,
-  RefreshCw,
   Sun,
   TriangleAlert,
+  X,
 } from "lucide-react";
 import {
+  AFFIRMATIONS,
   ARTIFACT_TYPES,
-  IDENTITY_LINES,
+  DECLARATION,
   MISS_ACTIONS,
   MISS_REASONS,
   REFUSAL_OPTIONS,
@@ -111,13 +112,14 @@ function astroAdvice(date) {
   return "Собери информацию и держи фактический приоритет выше контекста.";
 }
 
-export function TimelineBlock({ id, title, summary, active, complete, children, className = "", bare = false }) {
+export function TimelineBlock({ id, title, summary, active, complete, children, className = "", bare = false, guidance = null }) {
   const [open, setOpen] = useState(active);
   useEffect(() => setOpen(active), [active]);
   if (bare) return (
     <section className={`focus-phase-panel ${id}${complete ? " is-complete" : ""} ${className}`.trim()}>
-      <div className="focus-phase-head">
+      <div className={`focus-phase-head${guidance ? " has-guidance" : ""}`}>
         <div><span className="eyebrow">{title} сейчас</span><h2>{summary}</h2></div>
+        {guidance}
         {complete && <StatusBadge tone="green">завершено</StatusBadge>}
       </div>
       <div className="focus-phase-content">{children}</div>
@@ -139,7 +141,6 @@ export function DailyCompass({ s, up, date, northStar, deals, yesterdayOutcome, 
   const outcome = s.primaryOutcome;
   const text = primaryOutcomeText(outcome);
   const [editingState, setEditingState] = useState(!protocol.compass.stateBand);
-  const identityIndex = protocol.compass.affirmationId % IDENTITY_LINES.length;
   const dueDeal = deals.find((deal) => ["overdue", "today"].includes(dealStatus(deal, date).kind) && deal.nextStep);
   const suggestions = [
     northStar && { label: `North Star: ${northStar}`, text: northStar, source: "north-star" },
@@ -164,13 +165,6 @@ export function DailyCompass({ s, up, date, northStar, deals, yesterdayOutcome, 
         {protocol.compass.stateBand && !editingState ? <button type="button" className="command-state-summary" onClick={() => setEditingState(true)}>
           <span><strong>{STATE_VALUES.find((item) => item.value === protocol.compass.stateBand)?.label}</strong><small>спокойствие · фокус · решимость</small></span><span>Изменить</span>
         </button> : <ChoiceChips options={STATE_VALUES} value={protocol.compass.stateBand} onChange={(stateBand) => { updateCompass({ stateBand }); setEditingState(false); }} />}
-        {!s.dayStarted && <div className="command-identity">
-          <p>{IDENTITY_LINES[identityIndex]}</p>
-          <div className="command-icon-actions">
-            <button type="button" title="Следующая фраза" aria-label="Следующая фраза" onClick={() => updateCompass({ affirmationId: (identityIndex + 1) % IDENTITY_LINES.length })}><RefreshCw size={16} /></button>
-            <button type="button" title="Закрепить фразу" aria-label="Закрепить фразу" className={protocol.compass.affirmationPinned ? "active" : ""} onClick={() => updateCompass({ affirmationPinned: !protocol.compass.affirmationPinned })}><Pin size={16} /></button>
-          </div>
-        </div>}
       </div>
 
       <div className="command-outcome">
@@ -296,7 +290,7 @@ export function ConditionalProteinCard({ profile, morning, updateMorning, disabl
   );
 }
 
-export function MorningColumn({ s, up, profile, date, active, bare = false }) {
+export function MorningColumn({ s, up, profile, date, active, bare = false, guidance = null }) {
   const morning = s.dailyProtocol.morning;
   const medication = profile.medications.find((item) => item.id === "mounjaro" && item.active);
   const updateMorning = (patch) => up((prev) => ({ dailyProtocol: { ...prev.dailyProtocol, morning: { ...prev.dailyProtocol.morning, ...patch } } }));
@@ -305,7 +299,7 @@ export function MorningColumn({ s, up, profile, date, active, bare = false }) {
   const electrolytesDone = morning.supplementEvents.includes("electrolytes");
   const complete = morning.waterMl >= 500 && electrolytesDone && (!mounjaroDue || morning.medicationStatus !== "pending");
   return (
-    <TimelineBlock id="morning" title="Утро" summary="Быстрый запуск без завтрака" active={active} complete={complete} bare={bare}>
+    <TimelineBlock id="morning" title="Утро" summary="Быстрый запуск без завтрака" active={active} complete={complete} bare={bare} guidance={guidance}>
       <MedicationSequenceCard date={date} morning={morning} updateMorning={updateMorning} medication={medication} />
       <div className="routine-group first">
         <div className="routine-heading"><span className="eyebrow">После пробуждения</span><small>первый шаг дня</small></div>
@@ -405,11 +399,11 @@ export function TrainingRecommendationCard({ date, plan, protocolTraining, updat
   );
 }
 
-export function SportColumn({ s, up, date, plan, updatePlan, active, bare = false }) {
+export function SportColumn({ s, up, date, plan, updatePlan, active, bare = false, guidance = null }) {
   const training = s.dailyProtocol.training;
   const updateTraining = (patch) => up((prev) => ({ dailyProtocol: { ...prev.dailyProtocol, training: { ...prev.dailyProtocol.training, ...patch } } }));
   return (
-    <TimelineBlock id="sport" title="Спорт" summary={training.status === "done" ? "Тренировка завершена" : "Одна рекомендация по готовности"} active={active} complete={training.status === "done"} bare={bare}>
+    <TimelineBlock id="sport" title="Спорт" summary={training.status === "done" ? "Тренировка завершена" : "Одна рекомендация по готовности"} active={active} complete={training.status === "done"} bare={bare} guidance={guidance}>
       <TrainingRecommendationCard date={date} plan={plan} protocolTraining={training} updateTraining={updateTraining} updatePlan={updatePlan} />
     </TimelineBlock>
   );
@@ -487,7 +481,7 @@ export function MeetingPrepSheet({ value, onChange, onClose }) {
   );
 }
 
-export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, bare = false }) {
+export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, bare = false, guidance = null }) {
   const work = s.dailyProtocol.work;
   const outcome = s.primaryOutcome;
   const text = primaryOutcomeText(outcome);
@@ -497,7 +491,7 @@ export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, b
   const chairman = deals.filter((deal) => deal.chairmanOnly).slice(0, 3);
   const advice = astroAdvice(today);
   return (
-    <TimelineBlock id="work" title="Работа" summary={bare ? "Фокус, сделки и подготовка" : text || "Главный результат ещё не задан"} active={active} complete={outcome.status === "done"} className="work-dominant" bare={bare}>
+    <TimelineBlock id="work" title="Работа" summary={bare ? "Фокус, сделки и подготовка" : text || "Главный результат ещё не задан"} active={active} complete={outcome.status === "done"} className="work-dominant" bare={bare} guidance={guidance}>
       {bare ? <div className="work-phase-status"><div><span className="eyebrow">Статус результата</span><p>{text ? "Результат задан в Компасе. Здесь только исполнение." : "Сначала задай измеримый результат в Компасе."}</p></div><ChoiceChips green options={OUTCOME_STATUS} value={outcome.status} onChange={(status) => updateOutcome({ status })} /></div> : <div className="work-outcome">
         <div className="outcome-head"><span className="eyebrow">Главный результат</span>{outcome.dueAt && <span className="num">{outcome.dueAt}</span>}</div>
         <h2>{text || "Задай результат в Компасе дня"}</h2>
@@ -522,7 +516,7 @@ export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, b
   );
 }
 
-export function EveningShutdownSheet({ s, up, deals, profile, active, bare = false }) {
+export function EveningShutdownSheet({ s, up, deals, profile, active, bare = false, guidance = null }) {
   const evening = s.dailyProtocol.evening;
   const morning = s.dailyProtocol.morning;
   const outcome = s.primaryOutcome;
@@ -544,7 +538,7 @@ export function EveningShutdownSheet({ s, up, deals, profile, active, bare = fal
   ];
   const complete = evening.shutdown;
   return (
-    <TimelineBlock id="evening" title="Вечер" summary={complete ? "Рабочий день закрыт" : "Закрыть за 60–90 секунд"} active={active} complete={complete} bare={bare}>
+    <TimelineBlock id="evening" title="Вечер" summary={complete ? "Рабочий день закрыт" : "Закрыть за 60–90 секунд"} active={active} complete={complete} bare={bare} guidance={guidance}>
       <SupplementChecklist profile={profile} morning={morning} updateMorning={updateMorning} timings="pre_dinner" title="Перед ужином" note="условный шаг" />
       <SupplementChecklist profile={profile} morning={morning} updateMorning={updateMorning} timings="pre_sleep" title="За 1–2 часа до сна" />
       <details className="column-details">
@@ -645,17 +639,60 @@ function CommandRail({ s, up, date, profile, setPhase }) {
   </aside>;
 }
 
+function FullRitualPrompt({ s, up }) {
+  const [open, setOpen] = useState(false);
+  const affirmations = AFFIRMATIONS.map((_, index) => Boolean(s.aff?.[index]));
+  const doneCount = affirmations.filter(Boolean).length + (s.decl ? 1 : 0);
+  const nextAffirmation = AFFIRMATIONS[affirmations.findIndex((done) => !done)];
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (event) => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [open]);
+  const toggleAffirmation = (index) => up((prev) => ({
+    aff: AFFIRMATIONS.map((_, itemIndex) => itemIndex === index ? !prev.aff?.[itemIndex] : Boolean(prev.aff?.[itemIndex])),
+  }));
+  return <>
+    <button type="button" className="command-ritual-prompt" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+      <BookOpen size={18} aria-hidden="true" />
+      <span><span className="eyebrow">Полный ритуал · {doneCount}/4</span><strong>{doneCount === 4 ? "Аффирмации и Декларация завершены" : nextAffirmation ? `«${nextAffirmation}»` : "Декларация · прочитать вслух"}</strong></span>
+      <span>Открыть</span>
+    </button>
+    {open && <div className="ritual-modal-backdrop" onMouseDown={() => setOpen(false)}>
+      <section className="ritual-modal" role="dialog" aria-modal="true" aria-labelledby="full-ritual-title" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="ritual-modal-head">
+          <div><span className="eyebrow">Полный ритуал</span><h2 id="full-ritual-title">Аффирмации и Декларация</h2></div>
+          <button type="button" title="Закрыть" aria-label="Закрыть полный ритуал" onClick={() => setOpen(false)}><X size={20} /></button>
+        </div>
+        <div className="ritual-progress"><span style={{ width: `${doneCount * 25}%` }} /><small>{doneCount} из 4</small></div>
+        <div className="ritual-affirmations">
+          <span className="eyebrow">Аффирмации</span>
+          {AFFIRMATIONS.map((affirmation, index) => <CheckRow key={affirmation} gold on={affirmations[index]} onClick={() => toggleAffirmation(index)} label={`«${affirmation}»`} />)}
+        </div>
+        <div className="ritual-declaration">
+          <span className="eyebrow">Декларация</span>
+          <p>{DECLARATION}</p>
+          <CheckRow gold on={s.decl} onClick={() => up({ decl: !s.decl })} label="Прочитано вслух, принято" />
+        </div>
+        <Btn primary onClick={() => setOpen(false)}>Готово</Btn>
+      </section>
+    </div>}
+  </>;
+}
+
 export function DailyColumnsGrid({ s, up, date, deals, setDeals, northStar, profile, plan, updatePlan, phase, setPhase }) {
   const counts = phaseCounts(s, profile, date, deals);
+  const guidance = <FullRitualPrompt s={s} up={up} />;
   return (
     <div className="command-day-board">
       <CommandPhaseTabs phase={phase} setPhase={setPhase} counts={counts} />
       <div className="command-board-layout">
         <div className="command-active-phase" role="tabpanel">
-          {phase === "morning" && <MorningColumn s={s} up={up} profile={profile} date={date} active bare />}
-          {phase === "sport" && <SportColumn s={s} up={up} date={date} plan={plan} updatePlan={updatePlan} active bare />}
-          {phase === "work" && <WorkColumn s={s} up={up} deals={deals} setDeals={setDeals} today={date} northStar={northStar} active bare />}
-          {phase === "evening" && <EveningShutdownSheet s={s} up={up} deals={deals} profile={profile} active bare />}
+          {phase === "morning" && <MorningColumn s={s} up={up} profile={profile} date={date} active bare guidance={guidance} />}
+          {phase === "sport" && <SportColumn s={s} up={up} date={date} plan={plan} updatePlan={updatePlan} active bare guidance={guidance} />}
+          {phase === "work" && <WorkColumn s={s} up={up} deals={deals} setDeals={setDeals} today={date} northStar={northStar} active bare guidance={guidance} />}
+          {phase === "evening" && <EveningShutdownSheet s={s} up={up} deals={deals} profile={profile} active bare guidance={guidance} />}
         </div>
         <CommandRail s={s} up={up} date={date} profile={profile} setPhase={setPhase} />
       </div>
