@@ -158,17 +158,97 @@ export function migrateHealthProfile(raw, settings = {}) {
 }
 
 export const defaultTrainingPlan = () => ({
-  schemaVersion: 1,
-  template: "3_strength_2_aerobic",
-  days: {
-    monday: { type: "strength", focus: "shoulders_arms", duration: 60 },
-    tuesday: { type: "swim", focus: "zone2_technique", duration: 40, coldOptional: true },
-    wednesday: { type: "strength", focus: "chest_back", duration: 60 },
-    thursday: { type: "recovery", focus: "walk_mobility", duration: 35, coldOptional: true },
-    friday: { type: "strength", focus: "legs_core", duration: 60 },
-    saturday: { type: "swim", focus: "zone2", duration: 40, coldOptional: true },
-    sunday: { type: "rest", focus: "family_reset", duration: 0 },
+  schemaVersion: 2,
+  template: "4_day_strength_growth",
+  program: {
+    name: "Рост мышц и сила",
+    durationWeeks: 12,
+    strengthDays: 4,
+    principles: ["Прогрессивная нагрузка", "Чистая техника", "Регулярность"],
+    guidance: {
+      sets: "3–4 рабочих",
+      reps: "6–12 в среднем",
+      baseRest: "90–120 сек",
+      isolationRest: "45–75 сек",
+      cardio: "10–15 мин после силовой или 30–45 мин отдельно",
+      warmup: "5–10 минут",
+      reserve: "1–2 повтора в запасе (RIR)",
+      sleep: "7–8 часов",
+      protein: "1.6–2.0 г на кг веса",
+    },
   },
+  days: {
+    monday: {
+      type: "strength", focus: "push", title: "PUSH", subtitle: "Грудь · плечи · трицепс", duration: 70, durationLabel: "60–75",
+      warmup: "Разминка 5–10 минут", cardioAfter: "Ходьба 10–15 минут",
+      exercises: [
+        { id: "bench-press", name: "Жим штанги лёжа", sets: 4, reps: "6–8", restSec: 120 },
+        { id: "incline-dumbbell-press", name: "Жим гантелей на наклонной скамье", sets: 3, reps: "8–10", restSec: 90 },
+        { id: "seated-dumbbell-press", name: "Жим гантелей сидя", note: "плечи", sets: 3, reps: "8–10", restSec: 90 },
+        { id: "lateral-raise", name: "Разведения гантелей в стороны", sets: 3, reps: "12–15", restSec: 60 },
+        { id: "dips-close-grip", name: "Отжимания на брусьях или жим узким хватом", sets: 3, reps: "8–10", restSec: 90 },
+        { id: "triceps-pushdown", name: "Разгибание рук на блоке", sets: 3, reps: "12–15", restSec: 60 },
+      ],
+    },
+    tuesday: {
+      type: "strength", focus: "pull", title: "PULL", subtitle: "Спина · бицепс", duration: 70, durationLabel: "60–75", allowPreviousStrength: true,
+      warmup: "Разминка 5–10 минут", cardioAfter: "Прогулка 15–20 минут",
+      exercises: [
+        { id: "pull-up", name: "Подтягивания или тяга верхнего блока", sets: 4, reps: "8–10", restSec: 120 },
+        { id: "seated-row", name: "Тяга горизонтального блока", sets: 3, reps: "8–10", restSec: 90 },
+        { id: "barbell-row", name: "Тяга штанги или T-грифа", sets: 3, reps: "8–10", restSec: 90 },
+        { id: "face-pull", name: "Face Pull", note: "тяга к лицу на блоке", sets: 3, reps: "12–15", restSec: 60 },
+        { id: "barbell-curl", name: "Сгибания рук со штангой", sets: 3, reps: "8–10", restSec: 90 },
+        { id: "hammer-curl", name: "Молотковые сгибания гантелей", sets: 3, reps: "10–12", restSec: 60 },
+      ],
+    },
+    wednesday: {
+      type: "recovery", focus: "recovery_walk_swim", title: "Восстановление", subtitle: "Ходьба · плавание · растяжка", duration: 40, coldOptional: true,
+      exercises: [
+        { id: "recovery-walk", name: "Ходьба", reps: "30–45 мин" },
+        { id: "recovery-swim", name: "Плавание", reps: "20–30 мин" },
+        { id: "recovery-stretch", name: "Растяжка", reps: "10–15 мин" },
+        { id: "recovery-mobility", name: "Мобилизация суставов", reps: "мягко, без боли" },
+      ],
+    },
+    thursday: {
+      type: "strength", focus: "legs", title: "НОГИ", subtitle: "Ноги · ягодицы · пресс", duration: 70, durationLabel: "60–75",
+      warmup: "Разминка 5–10 минут", cardioAfter: "Ходьба 10–15 минут",
+      exercises: [
+        { id: "barbell-squat", name: "Приседания со штангой", sets: 4, reps: "6–8", restSec: 120 },
+        { id: "romanian-deadlift", name: "Румынская тяга", sets: 3, reps: "8–10", restSec: 90 },
+        { id: "leg-press", name: "Жим ногами", sets: 3, reps: "10–12", restSec: 90 },
+        { id: "leg-curl", name: "Сгибание ног лёжа", sets: 3, reps: "10–12", restSec: 60 },
+        { id: "calf-raise", name: "Подъёмы на носки стоя или в тренажёре", sets: 4, reps: "12–15", restSec: 60 },
+        { id: "plank", name: "Планка", sets: 3, reps: "45–60 сек", restSec: 60 },
+      ],
+    },
+    friday: {
+      type: "strength", focus: "upper_shape", title: "ВЕРХ ТЕЛА", subtitle: "Акцент на форму", duration: 70, durationLabel: "60–75", allowPreviousStrength: true,
+      warmup: "Разминка 5–10 минут", cardioAfter: "Ходьба 10–15 минут",
+      exercises: [
+        { id: "upper-pull-up", name: "Подтягивания или тяга верхнего блока", sets: 3, reps: "максимум (или 8–10)", restSec: 90 },
+        { id: "upper-incline-press", name: "Жим гантелей на наклонной скамье", sets: 3, reps: "8–10", restSec: 90 },
+        { id: "upper-lat-pulldown", name: "Тяга к груди в вертикальном блоке", sets: 3, reps: "10", restSec: 90 },
+        { id: "upper-lateral-raise", name: "Разведения гантелей в стороны", sets: 4, reps: "12–15", restSec: 60 },
+        { id: "rear-delt", name: "Разведения на заднюю дельту", note: "блок или тренажёр", sets: 3, reps: "12–15", restSec: 60 },
+        { id: "upper-curl", name: "Сгибания рук", sets: 3, reps: "10–12", restSec: 60 },
+        { id: "french-press", name: "Французский жим или разгибание на блоке", sets: 3, reps: "10–12", restSec: 60 },
+      ],
+    },
+    saturday: {
+      type: "recovery", focus: "active_recovery", title: "Активное восстановление", subtitle: "Ходьба или плавание · растяжка", duration: 50, coldOptional: true,
+      exercises: [
+        { id: "active-walk-swim", name: "Ходьба или плавание", reps: "45–60 мин" },
+        { id: "active-stretch", name: "Растяжка", reps: "10–15 мин" },
+      ],
+    },
+    sunday: {
+      type: "rest", focus: "rest", title: "Отдых", subtitle: "Полный отдых или спокойная прогулка", duration: 0,
+      exercises: [{ id: "full-rest", name: "Полный отдых", reps: "спокойная прогулка по желанию" }],
+    },
+  },
+  legacyDays: {},
   userOverrides: {},
   history: [],
   safetyProfile: {
@@ -181,10 +261,33 @@ export const defaultTrainingPlan = () => ({
 export function migrateTrainingPlan(raw) {
   const base = defaultTrainingPlan();
   const value = raw || {};
+  const isCurrentSchema = Number(value.schemaVersion || 0) >= 2;
+  const days = Object.fromEntries(Object.entries(base.days).map(([dayKey, baseDay]) => {
+    if (!isCurrentSchema) return [dayKey, baseDay];
+    const existing = value.days?.[dayKey] || {};
+    return [dayKey, {
+      ...baseDay,
+      ...existing,
+      exercises: Array.isArray(existing.exercises) ? existing.exercises : baseDay.exercises,
+    }];
+  }));
   return {
     ...base,
     ...value,
-    days: { ...base.days, ...(value.days || {}) },
+    schemaVersion: 2,
+    template: isCurrentSchema ? (value.template || base.template) : base.template,
+    program: {
+      ...base.program,
+      ...(isCurrentSchema ? (value.program || {}) : {}),
+      guidance: {
+        ...base.program.guidance,
+        ...(isCurrentSchema ? (value.program?.guidance || {}) : {}),
+      },
+    },
+    days,
+    legacyDays: isCurrentSchema
+      ? { ...base.legacyDays, ...(value.legacyDays || {}) }
+      : { ...(value.legacyDays || {}), ...(value.days || {}) },
     userOverrides: { ...base.userOverrides, ...(value.userOverrides || {}) },
     history: Array.isArray(value.history) ? value.history : [],
     safetyProfile: { ...base.safetyProfile, ...(value.safetyProfile || {}) },
@@ -226,6 +329,7 @@ export const emptyDailyProtocol = () => ({
     status: "planned",
     coldExposure: "not_recommended",
     swapDay: null,
+    completedExerciseIds: [],
   },
   work: {
     primaryOutcomeId: null,

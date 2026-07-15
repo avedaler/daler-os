@@ -68,6 +68,8 @@ const SESSION_LABELS = {
 const FOCUS_LABELS = {
   shoulders_arms: "Плечи + руки", zone2_technique: "Аэробная работа и техника", chest_back: "Грудь + спина",
   walk_mobility: "Ходьба + mobility", legs_core: "Ноги + core", zone2: "Спокойный аэробный объём", family_reset: "Прогулка и reset",
+  push: "Грудь · плечи · трицепс", pull: "Спина · бицепс", recovery_walk_swim: "Ходьба · плавание · растяжка",
+  legs: "Ноги · ягодицы · пресс", upper_shape: "Верх тела · акцент на форму", active_recovery: "Ходьба или плавание · растяжка", rest: "Полный отдых",
 };
 const EXERCISES = {
   shoulders_arms: ["Жим над головой", "Вертикальная тяга", "Подъёмы в стороны", "Бицепс", "Трицепс"],
@@ -337,7 +339,7 @@ function plannedSession(date, plan, protocolTraining) {
   const override = plan.userOverrides[date];
   const base = override || plan.days[dayKey];
   let session = { ...base, dayKey };
-  let reason = `План ${DAY_LABELS[dayKey].toLowerCase()}: ${FOCUS_LABELS[session.focus]}.`;
+  let reason = `План ${DAY_LABELS[dayKey].toLowerCase()}: ${session.subtitle || FOCUS_LABELS[session.focus] || session.title}.`;
   if (protocolTraining.readiness === "pain") {
     session = { type: "recovery", focus: "walk_mobility", duration: 25, dayKey };
     reason = "Отмечена боль: тяжёлая нагрузка снята. Восстановление и консультация специалиста при необходимости.";
@@ -347,7 +349,7 @@ function plannedSession(date, plan, protocolTraining) {
   }
   const yesterday = addDays(date, -1);
   const previousHeavy = plan.history.some((item) => item.date === yesterday && item.type === "strength" && item.status === "done");
-  if (previousHeavy && session.type === "strength") {
+  if (previousHeavy && session.type === "strength" && !session.allowPreviousStrength) {
     session = { type: "recovery", focus: "walk_mobility", duration: 30, dayKey };
     reason = "Вчера была тяжёлая силовая: сегодня восстановление, без двух тяжёлых сессий подряд.";
   }
@@ -359,10 +361,30 @@ export function TrainingRecommendationCard({ date, plan, protocolTraining, updat
   const [details, setDetails] = useState(false);
   const [swapOpen, setSwapOpen] = useState(false);
   const coldEligible = ["swim", "recovery"].includes(session.type) && !protocolTraining.painFlag;
-  const exercises = EXERCISES[session.focus] || [];
+  const exercises = Array.isArray(session.exercises)
+    ? session.exercises
+    : (EXERCISES[session.focus] || []).map((name, index) => ({ id: `legacy-${session.focus}-${index}`, name }));
+  const completedExerciseIds = Array.isArray(protocolTraining.completedExerciseIds) ? protocolTraining.completedExerciseIds : [];
+  const completedCount = exercises.filter((exercise) => completedExerciseIds.includes(exercise.id)).length;
+  const exerciseMeta = (exercise) => [
+    exercise.sets ? `${exercise.sets} × ${exercise.reps}` : exercise.reps,
+    exercise.restSec ? `отдых ${exercise.restSec} сек` : "",
+    exercise.note || "",
+  ].filter(Boolean).join(" · ");
+  const toggleExercise = (exerciseId) => {
+    const next = completedExerciseIds.includes(exerciseId)
+      ? completedExerciseIds.filter((id) => id !== exerciseId)
+      : [...completedExerciseIds, exerciseId];
+    updateTraining({
+      completedExerciseIds: next,
+      status: protocolTraining.status === "planned" ? "started" : protocolTraining.status,
+      plannedSessionId: session.type,
+      recommendationReason: reason,
+    });
+  };
   const start = () => updateTraining({ status: "started", plannedSessionId: session.type, recommendationReason: reason });
   const complete = () => {
-    updateTraining({ status: "done", plannedSessionId: session.type, recommendationReason: reason });
+    updateTraining({ status: "done", plannedSessionId: session.type, recommendationReason: reason, completedExerciseIds: exercises.map((exercise) => exercise.id) });
     updatePlan((current) => ({
       ...current,
       history: [...current.history.filter((item) => item.date !== date), { date, type: session.type, focus: session.focus, status: "done", at: new Date().toISOString() }],
@@ -375,7 +397,7 @@ export function TrainingRecommendationCard({ date, plan, protocolTraining, updat
   }));
   return (
     <div className="training-card">
-      <div className="training-title"><div><span className="eyebrow">Рекомендация сегодня</span><h3>{SESSION_LABELS[session.type]}</h3><p>{FOCUS_LABELS[session.focus]} · {session.duration || 0} минут</p></div><StatusBadge tone={session.type === "strength" ? "gold" : "green"}>{session.shortened ? "сокращено" : "по плану"}</StatusBadge></div>
+      <div className="training-title"><div><span className="eyebrow">Рекомендация сегодня</span><h3>{session.title || SESSION_LABELS[session.type]}</h3><p>{session.subtitle || FOCUS_LABELS[session.focus]} · {session.durationLabel || session.duration || 0} минут</p></div><StatusBadge tone={session.type === "strength" ? "gold" : "green"}>{session.shortened ? "сокращено" : "по плану"}</StatusBadge></div>
       <div className="why-today"><strong>Почему сегодня:</strong> {reason}</div>
       <span className="eyebrow">Готовность</span>
       <ChoiceChips options={[
@@ -384,9 +406,13 @@ export function TrainingRecommendationCard({ date, plan, protocolTraining, updat
       <div className="training-actions">
         <Btn primary onClick={start}>Начать</Btn><Btn onClick={() => updateTraining({ status: "shortened" })}>Сократить</Btn><Btn onClick={() => setSwapOpen((value) => !value)}>Заменить</Btn><Btn onClick={complete}>Завершено</Btn>
       </div>
-      {swapOpen && <div className="swap-sheet"><span className="eyebrow">Поменять на план другого дня</span><ChoiceChips options={Object.keys(DAY_LABELS).map((key) => ({ label: DAY_LABELS[key], value: key }))} value="" onChange={(key) => { swap(key); setSwapOpen(false); }} /></div>}
-      <button type="button" className="text-action" onClick={() => setDetails((value) => !value)}>{details ? "Скрыть план" : "Подробнее"}</button>
-      {details && <ul className="exercise-list">{exercises.slice(0, 6).map((exercise) => <li key={exercise}>{exercise}</li>)}</ul>}
+      {swapOpen && <div className="swap-sheet"><span className="eyebrow">Поменять на план другого дня</span><ChoiceChips options={Object.keys(DAY_LABELS).map((key) => ({ label: DAY_LABELS[key], value: key }))} value="" onChange={(key) => { swap(key); updateTraining({ completedExerciseIds: [], status: "planned" }); setSwapOpen(false); }} /></div>}
+      <button type="button" className="text-action" onClick={() => setDetails((value) => !value)}>{details ? "Скрыть план" : `План · ${completedCount}/${exercises.length}`}</button>
+      {details && <div className="exercise-plan">
+        {session.warmup && <p className="training-plan-note">{session.warmup}</p>}
+        <div className="exercise-plan-list">{exercises.map((exercise) => <CheckRow key={exercise.id} on={completedExerciseIds.includes(exercise.id)} onClick={() => toggleExercise(exercise.id)} label={exercise.name} meta={exerciseMeta(exercise)} />)}</div>
+        {session.cardioAfter && <p className="training-plan-note"><strong>После тренировки:</strong> {session.cardioAfter}</p>}
+      </div>}
       <div className="cold-row">
         <div><strong>Cold plunge · опционально</strong><span>{coldEligible ? "Допустимо в swim / recovery день после safety acknowledgement." : "Сегодня не рекомендуется: не сразу после силовой на рост мышц."}</span></div>
         {coldEligible && plan.safetyProfile.coldExposureAcknowledged ? (
@@ -622,11 +648,14 @@ function TodayHealthRail({ s, profile, setPhase }) {
   </section>;
 }
 
-function CommandRail({ s, up, date, profile, setPhase }) {
-  const [open, setOpen] = useState(false);
-  return <aside className={`command-rail${open ? " open" : ""}`}>
+function CommandRail({ s, up, date, profile, setPhase, phase }) {
+  const [open, setOpen] = useState(phase === "morning");
+  useEffect(() => {
+    if (phase === "morning") setOpen(true);
+  }, [phase]);
+  return <aside className={`command-rail${open ? " open" : ""}${phase === "morning" ? " morning-horoscope" : ""}`}>
     <button type="button" className="command-rail-toggle" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-      <span><span className="eyebrow">Сводка дня</span><strong>Контекст, здоровье, развитие</strong></span><ChevronDown size={18} aria-hidden="true" />
+      <span><span className="eyebrow">{phase === "morning" ? "Гороскопы" : "Сводка дня"}</span><strong>{phase === "morning" ? "Личный день, Луна, окна и риски" : "Контекст, здоровье, развитие"}</strong></span><ChevronDown size={18} aria-hidden="true" />
     </button>
     <div className="command-rail-content">
       <TodayForecast date={date} compact />
@@ -695,7 +724,7 @@ export function DailyColumnsGrid({ s, up, date, deals, setDeals, northStar, prof
           {phase === "work" && <WorkColumn s={s} up={up} deals={deals} setDeals={setDeals} today={date} northStar={northStar} active bare guidance={guidance} />}
           {phase === "evening" && <EveningShutdownSheet s={s} up={up} deals={deals} profile={profile} active bare guidance={guidance} />}
         </div>
-        <CommandRail s={s} up={up} date={date} profile={profile} setPhase={setPhase} />
+        <CommandRail s={s} up={up} date={date} profile={profile} setPhase={setPhase} phase={phase} />
       </div>
       {phase !== "evening" && <button type="button" className="evening-next-strip" onClick={() => setPhase("evening")}>
         <Moon size={23} aria-hidden="true" /><span><small className="eyebrow">Вечер · следующий шаг</small><strong>{s.dailyProtocol.evening.shutdown ? "Рабочий день закрыт" : "Закрыть день за 60–90 секунд"}</strong></span><span>Открыть <ArrowRight size={17} aria-hidden="true" /></span>

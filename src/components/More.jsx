@@ -142,13 +142,50 @@ const TRAINING_TYPES = [
 
 function TrainingPlanEditor({ plan, updatePlan }) {
   const patchDay = (dayKey, patch) => updatePlan((current) => ({ ...current, days: { ...current.days, [dayKey]: { ...current.days[dayKey], ...patch } } }));
+  const program = plan.program || {};
+  const guidance = program.guidance || {};
+  const exerciseMeta = (exercise) => [
+    exercise.sets ? `${exercise.sets} × ${exercise.reps}` : exercise.reps,
+    exercise.restSec ? `отдых ${exercise.restSec} сек` : "",
+    exercise.note || "",
+  ].filter(Boolean).join(" · ");
+  const actionWord = (count) => count === 1 ? "действие" : count >= 2 && count <= 4 ? "действия" : "действий";
   return <>
+    <Section kicker="рост мышц и сила" title={`${program.strengthDays || 4} силовых дня · ${program.durationWeeks || 12} недель`}>
+      <div className="training-program-metrics">
+        <div><span>Подходы</span><strong>{guidance.sets || "3–4 рабочих"}</strong></div>
+        <div><span>Повторения</span><strong>{guidance.reps || "6–12"}</strong></div>
+        <div><span>Запас</span><strong>{guidance.reserve || "1–2 RIR"}</strong></div>
+        <div><span>Сон</span><strong>{guidance.sleep || "7–8 часов"}</strong></div>
+      </div>
+      <div className="training-program-guidance">
+        <p><strong>Принципы:</strong> {(program.principles || []).join(" · ")}</p>
+        <p><strong>Кардио:</strong> {guidance.cardio}</p>
+        <p><strong>Питание:</strong> белок {guidance.protein}</p>
+      </div>
+    </Section>
     <Section kicker="адаптивная неделя" title="Тренировочный план">
-      <div className="training-plan-list">{TRAINING_DAYS.map(([dayKey, label]) => <div className="training-plan-row" key={dayKey}>
-        <div><strong>{label}</strong><small>{plan.days[dayKey].focus.replaceAll("_", " ")}</small></div>
-        <ChoiceChips options={TRAINING_TYPES} value={plan.days[dayKey].type} onChange={(type) => patchDay(dayKey, { type })} />
-        <Field label="Минут" type="number" min="0" max="180" value={plan.days[dayKey].duration} onChange={(duration) => patchDay(dayKey, { duration: Number(duration) || 0 })} />
-      </div>)}</div>
+      <div className="training-plan-list">{TRAINING_DAYS.map(([dayKey, label]) => {
+        const session = plan.days[dayKey];
+        const exercises = Array.isArray(session.exercises) ? session.exercises : [];
+        return <div className="training-plan-day" key={dayKey}>
+          <div className="training-plan-row">
+            <div><strong>{label}</strong><small>{session.title || session.focus.replaceAll("_", " ")}</small><span>{session.subtitle}</span></div>
+            <ChoiceChips options={TRAINING_TYPES} value={session.type} onChange={(type) => patchDay(dayKey, { type })} />
+            <Field label="Минут" type="number" min="0" max="180" value={session.duration} onChange={(duration) => patchDay(dayKey, { duration: Number(duration) || 0, durationLabel: "" })} />
+          </div>
+          {exercises.length > 0 && <details className="training-day-details">
+            <summary>План · {exercises.length} {actionWord(exercises.length)}</summary>
+            <div>{exercises.map((exercise, index) => <div className="training-day-exercise" key={exercise.id}>
+              <span>{index + 1}</span><strong>{exercise.name}</strong><small>{exerciseMeta(exercise)}</small>
+            </div>)}</div>
+          </details>}
+        </div>;
+      })}</div>
+      <details className="training-reference">
+        <summary>Открыть исходную схему</summary>
+        <img loading="lazy" src={`${import.meta.env.BASE_URL}training-program.jpg`} alt="Программа тренировок: рост мышц и сила, четыре дня в неделю" />
+      </details>
     </Section>
     <Section kicker="опционально" title="Холодное погружение">
       <CheckRow on={plan.safetyProfile.coldExposureAcknowledged} onClick={() => updatePlan((current) => ({ ...current, safetyProfile: { ...current.safetyProfile, coldExposureAcknowledged: !current.safetyProfile.coldExposureAcknowledged } }))} label="Правила безопасности подтверждены" meta="Только в дни плавания или восстановления; не сразу после силовой." />

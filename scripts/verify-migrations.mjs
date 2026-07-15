@@ -5,6 +5,7 @@ import {
   defaultTrainingPlan,
   migrateDay,
   migrateHealthProfile,
+  migrateTrainingPlan,
   primaryOutcomeText,
 } from "../src/constants.js";
 import { calendarMetrics, dailyEvents } from "../src/lib/achievements.js";
@@ -66,10 +67,24 @@ assert.equal(migratedProfile.supplements.find((item) => item.id === "b-complex")
 assert.equal(migratedProfile.supplements.find((item) => item.id === "magnesium-glycinate").dose, "300–400 mg");
 
 const training = defaultTrainingPlan();
-assert.equal(training.days.monday.focus, "shoulders_arms");
-assert.equal(training.days.wednesday.focus, "chest_back");
-assert.equal(training.days.friday.focus, "legs_core");
+assert.equal(training.schemaVersion, 2);
+assert.equal(training.template, "4_day_strength_growth");
+assert.equal(training.days.monday.focus, "push");
+assert.equal(training.days.tuesday.focus, "pull");
+assert.equal(training.days.thursday.focus, "legs");
+assert.equal(training.days.friday.focus, "upper_shape");
+assert.equal(training.days.friday.exercises.length, 7);
 assert.equal(training.safetyProfile.coldExposureAcknowledged, false);
+const migratedTraining = migrateTrainingPlan({
+  schemaVersion: 1,
+  days: { monday: { type: "strength", focus: "legacy_custom", duration: 45 } },
+  history: [{ date: "2026-01-01", status: "done" }],
+  userOverrides: { "2026-01-02": { type: "rest", focus: "legacy_rest", duration: 0 } },
+});
+assert.equal(migratedTraining.days.monday.focus, "push", "v1 plan upgrades to the requested four-day program");
+assert.equal(migratedTraining.legacyDays.monday.focus, "legacy_custom", "previous plan data remains archived");
+assert.equal(migratedTraining.history.length, 1);
+assert.equal(migratedTraining.userOverrides["2026-01-02"].focus, "legacy_rest");
 
 const achievementEvents = dailyEvents(migrateDay({
   primaryOutcome: { text: "Оплата получена", status: "done" },

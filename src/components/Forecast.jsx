@@ -97,8 +97,8 @@ export function TodayForecast({ date, compact = false }) {
   const { astro, numerology, fitness } = result;
   const fitnessLabel = fitness >= 2 ? "Высокая" : fitness <= -2 ? "Низкая" : "Нейтральная";
   const fitnessTone = fitness >= 2 ? "green" : fitness <= -2 ? "red" : "gold";
-  if (compact) return <section className="command-rail-section command-context" aria-label="Контекст дня">
-    <div className="command-rail-heading"><span className="eyebrow">Контекст дня</span><StatusBadge tone={fitnessTone}>сделки · {fitnessLabel}</StatusBadge></div>
+  if (compact) return <section className="command-rail-section command-context" aria-label="Гороскопы дня">
+    <div className="command-rail-heading"><span className="eyebrow">Гороскопы · сегодня</span><StatusBadge tone={fitnessTone}>сделки · {fitnessLabel}</StatusBadge></div>
     <div className="command-context-grid">
       <div><span>Личный день</span><strong>{numerology.pd}</strong></div>
       <div><span>Луна</span><strong>В {astro.moonSignLoc}</strong></div>
