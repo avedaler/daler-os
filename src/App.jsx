@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Compass, Moon, Sun } from "lucide-react";
 import {
   DEFAULT_SETTINGS,
   defaultHealthProfile,
@@ -48,6 +49,20 @@ const PAGE_TITLES = {
   more: "Система",
 };
 
+const THEME_STORAGE_KEY = "daler-os-theme";
+
+function normalizeTheme(value) {
+  return value === "light" ? "light" : "dark";
+}
+
+function storedTheme() {
+  try {
+    return normalizeTheme(localStorage.getItem(THEME_STORAGE_KEY));
+  } catch {
+    return "dark";
+  }
+}
+
 function dayKicker(date, today) {
   if (date === today) return "Сегодня";
   if (date === addDays(today, 1)) return "Завтра";
@@ -63,7 +78,7 @@ export default function App() {
   const [reviewView, setReviewView] = useState("week");
   const [s, setS] = useState(emptyDay());
   const [deals, setDealsState] = useState([]);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, theme: storedTheme() }));
   const [healthProfile, setHealthProfile] = useState(defaultHealthProfile());
   const [trainingPlan, setTrainingPlan] = useState(defaultTrainingPlan());
   const [northStar, setNorthStar] = useState("");
@@ -84,6 +99,15 @@ export default function App() {
   dateRef.current = date;
   loadedRef.current = loaded;
   loadedDateRef.current = loadedDate;
+
+  useEffect(() => {
+    const theme = normalizeTheme(settings.theme);
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f2f4f2" : "#101112");
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch { /* settings remain available in IndexedDB */ }
+  }, [settings.theme]);
 
   const selectDate = useCallback((nextDate) => {
     const currentDate = dateRef.current;
@@ -139,7 +163,11 @@ export default function App() {
           loadWeek(isoWeek(addDays(date, -7))),
         ]);
         if (!active) return;
-        const nextSettings = { ...DEFAULT_SETTINGS, ...(rawSettings || {}) };
+        const nextSettings = {
+          ...DEFAULT_SETTINGS,
+          ...(rawSettings || {}),
+          theme: normalizeTheme(rawSettings?.theme || storedTheme()),
+        };
         skipSave.current = true;
         setS(migrateDay(rawDay));
         setSettings(nextSettings);
@@ -224,6 +252,11 @@ export default function App() {
     setTab(nextTab);
   };
 
+  const goHome = () => {
+    setTab("today");
+    selectDate(now.date);
+  };
+
   if (locked) return <LockScreen onUnlock={() => setLocked(false)} />;
   if (!loaded) return <div className="app-loading">Загрузка DALER OS…</div>;
 
@@ -232,7 +265,10 @@ export default function App() {
       <PrintSheet date={date} s={s} settings={settings} deals={deals} northStar={northStar} />
       <div id="app-root" className="app-shell">
         <aside className="desktop-sidebar">
-          <div className="brand">DALER <span>OS</span></div>
+          <button type="button" className="brand" onClick={goHome} aria-label="DALER OS — на главную" title="На главную">
+            <Compass size={20} strokeWidth={1.8} aria-hidden="true" />
+            <span className="brand-wordmark">DALER <b>OS</b></span>
+          </button>
           <nav aria-label="Основная навигация">
             {NAV.map(([key, label]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => navigate(key)}><span>{label}</span>{navBadge[key] !== "" && <b>{navBadge[key]}</b>}</button>)}
           </nav>
@@ -242,11 +278,19 @@ export default function App() {
         <main className={`workspace ${tab === "today" ? "workspace-wide" : ""}`}>
           <header className="page-header">
             <div>
+              <button type="button" className="mobile-brand" onClick={goHome} aria-label="DALER OS — на главную" title="На главную">
+                <Compass size={16} strokeWidth={1.8} aria-hidden="true" />
+                <span>DALER <b>OS</b></span>
+              </button>
               <span className="kicker">{tab === "today" ? dayKicker(date, now.date) : "DALER OS"} · Kuala Lumpur</span>
               <h1>{tab === "today" ? prettyDate(date) : PAGE_TITLES[tab]}</h1>
               {tab !== "today" && <span className="header-date">{prettyDate(date)}</span>}
             </div>
             <div className="header-status">
+              <div className="theme-switch" role="group" aria-label="Цветовая тема">
+                <button type="button" className={settings.theme !== "light" ? "active" : ""} aria-pressed={settings.theme !== "light"} aria-label="Тёмная тема" title="Тёмная тема" onClick={() => upSettings({ theme: "dark" })}><Moon size={15} aria-hidden="true" /></button>
+                <button type="button" className={settings.theme === "light" ? "active" : ""} aria-pressed={settings.theme === "light"} aria-label="Светлая тема" title="Светлая тема" onClick={() => upSettings({ theme: "light" })}><Sun size={15} aria-hidden="true" /></button>
+              </div>
               <span className="sync-pill"><i />{saveState || syncNote || "локально сохранено"}</span>
               <button type="button" className="score-pill" aria-label={`Баланс дня ${pts} из ${max}`}><strong>{pts}</strong><span>/ {max}</span></button>
             </div>

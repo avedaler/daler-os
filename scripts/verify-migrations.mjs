@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   AFFIRMATIONS,
+  DEFAULT_SETTINGS,
   DECLARATION,
   defaultTrainingPlan,
   migrateDay,
@@ -17,6 +18,7 @@ assert.deepEqual(AFFIRMATIONS, [
   "Я — энергичный человек. Моя энергия создаёт движение, ценность и результат",
   "Я беру максимум от этого дня и ценю каждый его момент",
 ]);
+assert.equal(DEFAULT_SETTINGS.theme, "dark");
 assert.match(DECLARATION, /дисциплинированный создатель ценности, распределитель капитала и closer/);
 assert.match(DECLARATION, /Каждую неделю я измеряю факты, закрываю лишнее и снова выбираю главное/);
 assert.deepEqual(migrateDay({ aff: [true, false, true] }).aff, [true, false, true, false, false]);

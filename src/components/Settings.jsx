@@ -228,7 +228,7 @@ function LockSettings({ onLock }) {
 
 const TimeInput = ({ value, onChange, disabled }) => (
   <input type="time" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
-    style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: disabled ? C.muted : C.ivory, padding: "6px 10px", fontSize: 14, fontFamily: FONT.mono, colorScheme: "dark" }} />
+    style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: disabled ? C.muted : C.ivory, padding: "6px 10px", fontSize: 14, fontFamily: FONT.mono, colorScheme: "inherit" }} />
 );
 
 export default function Settings({ settings, upSettings, date, onLock }) {

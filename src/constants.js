@@ -11,16 +11,16 @@ export const DECLARATION = `Я — дисциплинированный созд
 Я не создаю новые истории, когда должен закрывать старые обязательства. Я не путаю внимание с прогрессом, встречи — со сделками, claims — с деньгами, а намерения — с дисциплиной. Каждый день я создаю одно экономическое доказательство, укрепляю тело и присутствую в отношениях. Каждую неделю я измеряю факты, закрываю лишнее и снова выбираю главное.`;
 
 export const C = {
-  bg: "#0a0c10",
-  panel: "#12151c",
-  panel2: "#0d1016",
-  line: "rgba(235,230,218,0.09)",
-  ivory: "#ece7db",
-  muted: "#8b93a5",
-  gold: "#d4af6e",
-  goldDim: "#967c4c",
-  green: "#7cbb92",
-  red: "#c98080",
+  bg: "var(--bg)",
+  panel: "var(--surface)",
+  panel2: "var(--surface-quiet)",
+  line: "var(--border)",
+  ivory: "var(--text)",
+  muted: "var(--muted)",
+  gold: "var(--gold)",
+  goldDim: "var(--gold-dim)",
+  green: "var(--green)",
+  red: "var(--red)",
 };
 
 export const FONT = {
@@ -522,6 +522,7 @@ export const emptyWeekReview = () => ({
 });
 
 export const DEFAULT_SETTINGS = {
+  theme: "dark",
   notifyMorning: true,
   morningTime: "07:30",
   notifyArchitect: false,

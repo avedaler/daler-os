@@ -53,3 +53,56 @@
 - Browser diagnostics contained Vite debug and React development info only; no runtime error entry was observed.
 
 final result: passed
+
+---
+
+# Theme Extension QA
+
+**Comparison Target**
+- Source visual truth: `/Users/dalerave/.codex/generated_images/019f5da8-55e1-7a61-a35e-6a138a0ae6e5/exec-3b6e4f37-f01b-4c99-81a0-95ee9dfbda46.png` (Warm Graphite) and `/Users/dalerave/.codex/generated_images/019f5da8-55e1-7a61-a35e-6a138a0ae6e5/exec-ad782dd4-069a-4967-a305-da8bd40bd897.png` (Executive Pearl).
+- Browser-rendered implementation: `http://127.0.0.1:5173/`.
+- Implementation screenshots: `docs/pr-assets/v3/theme-dark-desktop.png`, `docs/pr-assets/v3/theme-light-desktop.png`, `docs/pr-assets/v3/theme-dark-mobile.png`, and `docs/pr-assets/v3/theme-light-mobile.png`.
+- Viewports: 1440x1024 desktop and 390x844 mobile.
+- State: Today, Work phase selected, empty local day, both dark and light themes.
+
+**Full-View Comparison Evidence**
+- Combined reference/implementation board: `docs/pr-assets/v3/theme-design-comparison.png`.
+- The two selected palettes preserve the source hierarchy, restrained gold accent, neutral semantic colors, flat executive surfaces, and existing information density.
+
+**Focused Region Evidence**
+- Dark header, command compass, phase tabs, work panel, and right rail: `docs/pr-assets/v3/theme-dark-focused-comparison.png`.
+- This focused pass was used to inspect the logo, typography hierarchy, control density, borders, radii, semantic chips, and sidebar proportions.
+
+**Required Fidelity Surfaces**
+- Fonts and typography: Playfair Display, Manrope, and JetBrains Mono remain consistent with the source; hierarchy, weights, line heights, and wrapping are intact in both themes.
+- Spacing and layout rhythm: panel spacing, 7-8px radii, sidebar proportion, phase tabs, command compass, and rail density match the source direction. Desktop content now fits within the viewport.
+- Colors and visual tokens: Warm Graphite and Executive Pearl are implemented as complete token sets, including surfaces, text, borders, gold accent, and semantic green/amber/red states.
+- Image and asset fidelity: no source imagery was required. The requested logo uses the existing Lucide Compass icon with the DALER OS wordmark; no handmade SVG or placeholder asset was introduced.
+- Copy and content: existing DALER OS copy and current accepted modules are preserved. The day switcher and horoscope content intentionally remain because they are part of the approved product state.
+
+**Findings**
+- No actionable P0, P1, or P2 differences remain.
+- [P3] The implementation includes the approved day switcher and current horoscope labels that are not present in the generated color references. This is intentional product-state fidelity, not theme drift.
+
+**Comparison History**
+- Pass 1 finding [P2]: at 1440px, the workspace width was calculated independently of the fixed sidebar, clipping persistent controls on the right.
+- Fix: constrained desktop workspace widths with `calc(100vw - var(--sidebar))` while retaining the existing max widths.
+- Pass 2 evidence: `docs/pr-assets/v3/theme-light-desktop.png` and `docs/pr-assets/v3/theme-dark-desktop.png` show the full score, readiness action, phase tabs, horoscope rail, health rail, and development rail inside the viewport.
+- Post-fix result: no remaining P0/P1/P2 visual issues at 1440x1024 or 390x844.
+
+**Primary Interactions Tested**
+- Switched between dark and light themes.
+- Reloaded and confirmed the selected theme persisted.
+- Opened Deals and used the DALER OS logo to return to Today.
+- Checked desktop and mobile navigation, header, and fixed bottom navigation.
+- Browser console checked: no warnings or errors from the implementation.
+
+**Implementation Checklist**
+- [x] Warm Graphite dark theme.
+- [x] Executive Pearl light theme.
+- [x] Persistent theme choice.
+- [x] Clickable DALER OS logo on desktop and mobile.
+- [x] Desktop and mobile responsive verification.
+- [x] Runtime console verification.
+
+final result: passed

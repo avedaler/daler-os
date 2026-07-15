@@ -176,7 +176,7 @@ export default function Forecast({ today }) {
 
   const dateInput = (val, onChange, aria) => (
     <input type="date" value={val} aria-label={aria} onChange={(e) => e.target.value && onChange(e.target.value)}
-      style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: C.ivory, padding: "7px 10px", fontSize: 13, fontFamily: FONT.mono, colorScheme: "dark" }} />
+      style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: C.ivory, padding: "7px 10px", fontSize: 13, fontFamily: FONT.mono, colorScheme: "inherit" }} />
   );
 
   const single = r.days.length === 1 ? r.days[0] : null;
@@ -268,7 +268,7 @@ export default function Forecast({ today }) {
                 {r.days.map((d) => {
                   const mark = d.fit >= 2 ? { t: "✓ да", c: C.green } : d.fit <= -2 ? { t: "избегать", c: C.red } : { t: "·", c: C.muted };
                   return (
-                    <tr key={d.iso} style={{ borderBottom: `1px solid ${C.line}`, background: d.iso === today ? "rgba(200,164,92,.06)" : "transparent" }}>
+                    <tr key={d.iso} style={{ borderBottom: `1px solid ${C.line}`, background: d.iso === today ? "var(--accent-subtle)" : "transparent" }}>
                       <td style={{ padding: "7px 8px", color: C.ivory, whiteSpace: "nowrap" }}>{shortDate(d.iso)}</td>
                       <td style={{ padding: "7px 8px", fontFamily: FONT.mono, color: d.pd === 8 ? C.gold : C.ivory }}>{d.pd}</td>
                       <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>{MOON_GLYPH[d.a.moonSign]} {SIGNS[d.a.moonSign]}</td>
