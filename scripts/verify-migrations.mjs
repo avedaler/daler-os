@@ -14,10 +14,11 @@ assert.deepEqual(AFFIRMATIONS, [
   "Я богат, я здоров и я счастлив",
   "Мирное изобилие — моё наследие. Порядок установлен во мне",
   "Я — энергичный человек. Моя энергия создаёт движение, ценность и результат",
+  "Я беру максимум от этого дня и ценю каждый его момент",
 ]);
 assert.match(DECLARATION, /дисциплинированный создатель ценности, распределитель капитала и closer/);
 assert.match(DECLARATION, /Каждую неделю я измеряю факты, закрываю лишнее и снова выбираю главное/);
-assert.deepEqual(migrateDay({ aff: [true, false, true] }).aff, [true, false, true, false]);
+assert.deepEqual(migrateDay({ aff: [true, false, true] }).aff, [true, false, true, false, false]);
 
 const legacyDay = {
   proof: "Подписан договор",
