@@ -659,11 +659,17 @@ function CommandRail({ s, up, date, profile, setPhase, phase }) {
     </button>
     <div className="command-rail-content">
       <TodayForecast date={date} compact />
-      <TodayHealthRail s={s} profile={profile} setPhase={setPhase} />
-      <section className="command-rail-section">
-        <div className="command-rail-heading"><span className="eyebrow">Развитие</span><StatusBadge tone="neutral">сегодня</StatusBadge></div>
-        <Development s={s} up={up} date={date} rail />
-      </section>
+      {phase === "morning" ? <section className="command-rail-section morning-horoscope-focus">
+        <div className="command-rail-heading"><span className="eyebrow">Фокус утра</span><StatusBadge tone="gold">ориентир</StatusBadge></div>
+        <p>{astroAdvice(date)}</p>
+        <small>Гороскоп задаёт контекст. Решение принимается по фактам, срокам и ответственности.</small>
+      </section> : <>
+        <TodayHealthRail s={s} profile={profile} setPhase={setPhase} />
+        <section className="command-rail-section">
+          <div className="command-rail-heading"><span className="eyebrow">Развитие</span><StatusBadge tone="neutral">сегодня</StatusBadge></div>
+          <Development s={s} up={up} date={date} rail />
+        </section>
+      </>}
     </div>
   </aside>;
 }

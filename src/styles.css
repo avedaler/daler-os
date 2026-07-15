@@ -507,6 +507,9 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
 .training-reference { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 5px; }
 .training-reference img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: 7px; margin-top: 8px; }
 .command-rail.morning-horoscope .command-context { border-color: rgba(209, 173, 97, .48); }
+.morning-horoscope-focus { border-color: rgba(209, 173, 97, .34); }
+.morning-horoscope-focus p { margin: 0; color: var(--text); font: 500 16px/1.55 var(--serif); }
+.morning-horoscope-focus > small { display: block; border-top: 1px solid var(--border); margin-top: 12px; padding-top: 10px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 
 .work-outcome { border: 1px solid rgba(209, 173, 97, .5); border-radius: 8px; padding: 14px; background: rgba(209, 173, 97, .035); }
 .work-outcome h2 { font: 500 23px/1.35 var(--serif); margin: 8px 0 13px; }
