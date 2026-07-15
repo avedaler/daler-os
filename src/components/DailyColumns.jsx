@@ -642,6 +642,7 @@ function CommandRail({ s, up, date, profile, setPhase }) {
 function FullRitualPrompt({ s, up }) {
   const [open, setOpen] = useState(false);
   const affirmations = AFFIRMATIONS.map((_, index) => Boolean(s.aff?.[index]));
+  const ritualTotal = AFFIRMATIONS.length + 1;
   const doneCount = affirmations.filter(Boolean).length + (s.decl ? 1 : 0);
   const nextAffirmation = AFFIRMATIONS[affirmations.findIndex((done) => !done)];
   useEffect(() => {
@@ -656,7 +657,7 @@ function FullRitualPrompt({ s, up }) {
   return <>
     <button type="button" className="command-ritual-prompt" aria-haspopup="dialog" onClick={() => setOpen(true)}>
       <BookOpen size={18} aria-hidden="true" />
-      <span><span className="eyebrow">Полный ритуал · {doneCount}/4</span><strong>{doneCount === 4 ? "Аффирмации и Декларация завершены" : nextAffirmation ? `«${nextAffirmation}»` : "Декларация · прочитать вслух"}</strong></span>
+      <span><span className="eyebrow">Полный ритуал · {doneCount}/{ritualTotal}</span><strong>{doneCount === ritualTotal ? "Аффирмации и Декларация завершены" : nextAffirmation ? `«${nextAffirmation}»` : "Декларация · прочитать вслух"}</strong></span>
       <span>Открыть</span>
     </button>
     {open && <div className="ritual-modal-backdrop" onMouseDown={() => setOpen(false)}>
@@ -665,7 +666,7 @@ function FullRitualPrompt({ s, up }) {
           <div><span className="eyebrow">Полный ритуал</span><h2 id="full-ritual-title">Аффирмации и Декларация</h2></div>
           <button type="button" title="Закрыть" aria-label="Закрыть полный ритуал" onClick={() => setOpen(false)}><X size={20} /></button>
         </div>
-        <div className="ritual-progress"><span style={{ width: `${doneCount * 25}%` }} /><small>{doneCount} из 4</small></div>
+        <div className="ritual-progress"><span style={{ width: `${(doneCount / ritualTotal) * 100}%` }} /><small>{doneCount} из {ritualTotal}</small></div>
         <div className="ritual-affirmations">
           <span className="eyebrow">Аффирмации</span>
           {AFFIRMATIONS.map((affirmation, index) => <CheckRow key={affirmation} gold on={affirmations[index]} onClick={() => toggleAffirmation(index)} label={`«${affirmation}»`} />)}

@@ -2,6 +2,7 @@ export const AFFIRMATIONS = [
   "Мои финансовые доходы сейчас увеличиваются",
   "Я богат, я здоров и я счастлив",
   "Мирное изобилие — моё наследие. Порядок установлен во мне",
+  "Я — энергичный человек. Моя энергия создаёт движение, ценность и результат",
 ];
 
 export const DECLARATION = `Я — дисциплинированный создатель ценности, распределитель капитала и closer. Я запускаю только то, что способно стать подписанным, оплаченным, запущенным и повторяемым. Я защищаю своё тело, семью, репутацию, внимание и свободу.
@@ -275,7 +276,7 @@ export const emptyDay = () => ({
   healthActs: [],           // Тренировка / Ходьба / Добавки / Восстановление
   artifactType: "",
   // наследие v1/v2 (миграция при загрузке)
-  aff: [false, false, false],
+  aff: AFFIRMATIONS.map(() => false),
   decl: false,
   architectQ: "",
   state: 5,
@@ -337,6 +338,7 @@ export function migrateDay(v) {
     ...base,
     ...value,
     schemaVersion: 3,
+    aff: AFFIRMATIONS.map((_, index) => Boolean(value.aff?.[index])),
     primaryOutcome,
     chairmanOnly: primaryOutcome.chairmanOnly,
     outcomeStatus: value.outcomeStatus || primaryOutcome.status,
