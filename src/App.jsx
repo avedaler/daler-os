@@ -33,7 +33,7 @@ import More from "./components/More";
 import LockScreen from "./components/LockScreen";
 import PrintSheet from "./components/PrintSheet";
 import { hasLock, isUnlockedThisSession } from "./lib/lock";
-import { cloudConfigured, currentUser, syncAll } from "./lib/cloud";
+import { cloudConfigured, currentUser, subscribeCloudChanges, syncAll } from "./lib/cloud";
 
 const NAV = [
   ["today", "Сегодня"],
@@ -207,8 +207,14 @@ export default function App() {
   useEffect(() => {
     let active = true;
     let syncing = false;
+    let syncQueued = false;
+    let unsubscribeLive = null;
     const refreshFromCloud = async () => {
-      if (!active || syncing || document.visibilityState === "hidden" || !cloudConfigured()) return;
+      if (!active || document.visibilityState === "hidden" || !cloudConfigured()) return;
+      if (syncing) {
+        syncQueued = true;
+        return;
+      }
       syncing = true;
       try {
         if (!await currentUser()) return;
@@ -231,20 +237,39 @@ export default function App() {
         if (active) setSyncNote("");
       } finally {
         syncing = false;
+        if (active && syncQueued) {
+          syncQueued = false;
+          queueMicrotask(refreshFromCloud);
+        }
       }
     };
     const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") refreshFromCloud();
+      if (document.visibilityState === "visible") {
+        connectLive();
+        refreshFromCloud();
+      }
     };
+    const connectLive = async () => {
+      if (!active || unsubscribeLive) return;
+      const unsubscribe = await subscribeCloudChanges(refreshFromCloud);
+      if (!active) unsubscribe?.();
+      else unsubscribeLive = unsubscribe;
+    };
+    const resumeCloud = () => {
+      connectLive();
+      refreshFromCloud();
+    };
+    connectLive();
     const timer = window.setInterval(refreshFromCloud, CLOUD_REFRESH_MS);
-    window.addEventListener("focus", refreshFromCloud);
-    window.addEventListener("online", refreshFromCloud);
+    window.addEventListener("focus", resumeCloud);
+    window.addEventListener("online", resumeCloud);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       active = false;
+      unsubscribeLive?.();
       window.clearInterval(timer);
-      window.removeEventListener("focus", refreshFromCloud);
-      window.removeEventListener("online", refreshFromCloud);
+      window.removeEventListener("focus", resumeCloud);
+      window.removeEventListener("online", resumeCloud);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [applyWorkspaceSnapshot]);
