@@ -50,6 +50,7 @@ const PAGE_TITLES = {
 };
 
 const THEME_STORAGE_KEY = "daler-os-theme";
+const CLOUD_REFRESH_MS = 30000;
 
 function normalizeTheme(value) {
   return value === "light" ? "light" : "dark";
@@ -68,6 +69,30 @@ function dayKicker(date, today) {
   if (date === addDays(today, 1)) return "Завтра";
   if (date === addDays(today, -1)) return "Вчера";
   return "Выбранный день";
+}
+
+async function loadWorkspaceSnapshot(date) {
+  const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, previousReview] = await Promise.all([
+    loadDay(date),
+    loadSettings(),
+    loadDeals(),
+    loadHealthProfile(),
+    loadTrainingPlan(),
+    loadWeek(isoWeek(addDays(date, -7))),
+  ]);
+  const nextSettings = {
+    ...DEFAULT_SETTINGS,
+    ...(rawSettings || {}),
+    theme: normalizeTheme(rawSettings?.theme || storedTheme()),
+  };
+  return {
+    day: migrateDay(rawDay),
+    settings: nextSettings,
+    deals: rawDeals,
+    healthProfile: migrateHealthProfile(rawProfile, nextSettings),
+    trainingPlan: migrateTrainingPlan(rawPlan),
+    northStar: previousReview?.nextWeek?.trim() || "",
+  };
 }
 
 export default function App() {
@@ -99,6 +124,18 @@ export default function App() {
   dateRef.current = date;
   loadedRef.current = loaded;
   loadedDateRef.current = loadedDate;
+
+  const applyWorkspaceSnapshot = useCallback((snapshot, targetDate) => {
+    if (!snapshot || dateRef.current !== targetDate) return false;
+    skipSave.current = true;
+    setS(snapshot.day);
+    setSettings(snapshot.settings);
+    setDealsState(snapshot.deals);
+    setHealthProfile(snapshot.healthProfile);
+    setTrainingPlan(snapshot.trainingPlan);
+    setNorthStar(snapshot.northStar);
+    return true;
+  }, []);
 
   useEffect(() => {
     const theme = normalizeTheme(settings.theme);
@@ -154,27 +191,9 @@ export default function App() {
       }
 
       try {
-        const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, previousReview] = await Promise.all([
-          loadDay(date),
-          loadSettings(),
-          loadDeals(),
-          loadHealthProfile(),
-          loadTrainingPlan(),
-          loadWeek(isoWeek(addDays(date, -7))),
-        ]);
+        const snapshot = await loadWorkspaceSnapshot(date);
         if (!active) return;
-        const nextSettings = {
-          ...DEFAULT_SETTINGS,
-          ...(rawSettings || {}),
-          theme: normalizeTheme(rawSettings?.theme || storedTheme()),
-        };
-        skipSave.current = true;
-        setS(migrateDay(rawDay));
-        setSettings(nextSettings);
-        setDealsState(rawDeals);
-        setHealthProfile(migrateHealthProfile(rawProfile, nextSettings));
-        setTrainingPlan(migrateTrainingPlan(rawPlan));
-        setNorthStar(previousReview?.nextWeek?.trim() || "");
+        applyWorkspaceSnapshot(snapshot, date);
       } finally {
         if (active) {
           setLoadedDate(date);
@@ -183,7 +202,52 @@ export default function App() {
       }
     })();
     return () => { active = false; };
-  }, [date]);
+  }, [date, applyWorkspaceSnapshot]);
+
+  useEffect(() => {
+    let active = true;
+    let syncing = false;
+    const refreshFromCloud = async () => {
+      if (!active || syncing || document.visibilityState === "hidden" || !cloudConfigured()) return;
+      syncing = true;
+      try {
+        if (!await currentUser()) return;
+        setSyncNote("синхронизация…");
+        const result = await Promise.race([
+          syncAll(),
+          new Promise((resolve) => setTimeout(() => resolve({ ok: false, reason: "timeout" }), 6000)),
+        ]);
+        if (!active) return;
+        if (result.ok && result.pulled > 0) {
+          const targetDate = dateRef.current;
+          const snapshot = await loadWorkspaceSnapshot(targetDate);
+          if (active && applyWorkspaceSnapshot(snapshot, targetDate)) {
+            setSyncNote(`обновлено ${result.pulled}`);
+            return;
+          }
+        }
+        setSyncNote(result.ok ? "синхронизировано" : "");
+      } catch {
+        if (active) setSyncNote("");
+      } finally {
+        syncing = false;
+      }
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshFromCloud();
+    };
+    const timer = window.setInterval(refreshFromCloud, CLOUD_REFRESH_MS);
+    window.addEventListener("focus", refreshFromCloud);
+    window.addEventListener("online", refreshFromCloud);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshFromCloud);
+      window.removeEventListener("online", refreshFromCloud);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [applyWorkspaceSnapshot]);
 
   useEffect(() => {
     if (!loaded || loadedDate !== date) return undefined;

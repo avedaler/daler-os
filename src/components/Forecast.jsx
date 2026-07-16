@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { C, FONT, migrateDay } from "../constants";
 import { Section, Btn, StatusBadge } from "./atoms";
-import { computeAstro, astroToText, SIGNS } from "../lib/astro";
+import { computeAstro, astroToText, MOON_SIGN_TEXT, SIGNS } from "../lib/astro";
 import { personalDay, PD_MEANING } from "../lib/numerology";
 import { prettyDate, weekday, addDays } from "../lib/date";
 import { loadDay } from "../lib/store";
@@ -116,8 +116,9 @@ export function TodayForecast({ date, compact = false }) {
         <p>{PD_MEANING[numerology.pd]}</p>
       </div>
       <div className="forecast-detail-block">
-        <span>Луна и фаза</span>
-        <p>Луна в {astro.moonSignLoc}. {astro.phase.name}, освещённость {astro.illum}%.</p>
+        <span>Прогноз Луны</span>
+        <p><strong>Луна в {astro.moonSignLoc}</strong> — {MOON_SIGN_TEXT[astro.moonSign]}</p>
+        <p>{astro.phase.name}, освещённость {astro.illum}%.</p>
       </div>
       <div className="forecast-detail-columns">
         <div><span>Окна · {astro.windows.length}</span>{astro.windows.length ? astro.windows.map((item, index) => <p key={`${item.text}-${index}`}>{item.text}</p>) : <p>Выраженных благоприятных окон нет.</p>}</div>
