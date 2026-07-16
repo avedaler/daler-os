@@ -7,6 +7,7 @@ import { get as idbGet, set as idbSet, keys as idbKeys } from "idb-keyval";
 const CFG_KEY = "daleros:cloud";
 const META_KEY = "daleros:kvmeta";
 const TABLE = "daleros_kv";
+const notifyCloudStatus = () => window.dispatchEvent(new Event("daleros-cloud-status"));
 
 // Какие ключи синхронизируем
 const syncable = (k) =>
@@ -41,6 +42,7 @@ export function setConfig(cfg) {
   if (cfg) localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   else localStorage.removeItem(CFG_KEY);
   client = null;
+  notifyCloudStatus();
 }
 
 export function getClient() {
@@ -73,6 +75,7 @@ export async function signUp(email, password) {
   if (!c) throw new Error("Облако не настроено");
   const { error } = await c.auth.signUp({ email, password });
   if (error) throw error;
+  notifyCloudStatus();
 }
 
 export async function signIn(email, password) {
@@ -80,11 +83,13 @@ export async function signIn(email, password) {
   if (!c) throw new Error("Облако не настроено");
   const { error } = await c.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  notifyCloudStatus();
 }
 
 export async function signOut() {
   await getClient()?.auth.signOut();
   closeLiveChannel();
+  notifyCloudStatus();
 }
 
 async function ensureLiveChannel() {

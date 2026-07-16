@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Compass, Moon, Sun } from "lucide-react";
+import { CloudOff, Compass, Moon, Sun } from "lucide-react";
 import {
   DEFAULT_SETTINGS,
   defaultHealthProfile,
@@ -111,6 +111,8 @@ export default function App() {
   const [loadedDate, setLoadedDate] = useState("");
   const [saveState, setSaveState] = useState("");
   const [syncNote, setSyncNote] = useState("");
+  const [cloudStatus, setCloudStatus] = useState(() => cloudConfigured() ? "checking" : "local");
+  const [moreInitialView, setMoreInitialView] = useState("");
   const saveTimer = useRef(null);
   const settingsRef = useRef(settings);
   const dayRef = useRef(s);
@@ -136,6 +138,24 @@ export default function App() {
     setNorthStar(snapshot.northStar);
     return true;
   }, []);
+
+  const refreshCloudStatus = useCallback(async () => {
+    if (!cloudConfigured()) {
+      setCloudStatus("local");
+      return;
+    }
+    try {
+      setCloudStatus(await currentUser() ? "online" : "signed_out");
+    } catch {
+      setCloudStatus("offline");
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshCloudStatus();
+    window.addEventListener("daleros-cloud-status", refreshCloudStatus);
+    return () => window.removeEventListener("daleros-cloud-status", refreshCloudStatus);
+  }, [refreshCloudStatus]);
 
   useEffect(() => {
     const theme = normalizeTheme(settings.theme);
@@ -338,7 +358,13 @@ export default function App() {
   };
 
   const navigate = (nextTab) => {
+    if (nextTab !== "more") setMoreInitialView("");
     setTab(nextTab);
+  };
+
+  const openCloudSettings = () => {
+    setMoreInitialView("settings");
+    setTab("more");
   };
 
   const goHome = () => {
@@ -380,15 +406,20 @@ export default function App() {
                 <button type="button" className={settings.theme !== "light" ? "active" : ""} aria-pressed={settings.theme !== "light"} aria-label="Тёмная тема" title="Тёмная тема" onClick={() => upSettings({ theme: "dark" })}><Moon size={15} aria-hidden="true" /></button>
                 <button type="button" className={settings.theme === "light" ? "active" : ""} aria-pressed={settings.theme === "light"} aria-label="Светлая тема" title="Светлая тема" onClick={() => upSettings({ theme: "light" })}><Sun size={15} aria-hidden="true" /></button>
               </div>
-              <span className="sync-pill"><i />{saveState || syncNote || "локально сохранено"}</span>
+              <span className={`sync-pill${cloudStatus === "online" ? "" : " local"}`}><i />{saveState || syncNote || (cloudStatus === "online" ? "облако подключено" : cloudStatus === "signed_out" ? "облако: нужен вход" : "только локально")}</span>
               <button type="button" className="score-pill" aria-label={`Баланс дня ${pts} из ${max}`}><strong>{pts}</strong><span>/ {max}</span></button>
             </div>
           </header>
 
+          {cloudStatus !== "online" && <button type="button" className="mobile-cloud-warning" onClick={openCloudSettings}>
+            <CloudOff size={16} aria-hidden="true" />
+            <span><strong>{cloudStatus === "signed_out" ? "Войдите для синхронизации" : "Синхронизация выключена"}</strong><small>Данные сейчас остаются только на этом устройстве</small></span>
+          </button>}
+
           {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} today={now.date} setDate={selectDate} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} />}
           {tab === "deals" && <div className="standard-page"><Deals deals={deals} setDeals={setDeals} today={now.date} /></div>}
           {tab === "review" && <div className="standard-page"><Overview date={date} setDate={selectDate} today={now.date} sub={reviewView} setSub={setReviewView} /></div>}
-          {tab === "more" && <div className="standard-page"><More s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} onLock={() => setLocked(true)} /></div>}
+          {tab === "more" && <div className="standard-page"><More initialView={moreInitialView} s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} onLock={() => setLocked(true)} /></div>}
         </main>
 
         <nav className="mobile-bottom-nav" aria-label="Основная навигация">

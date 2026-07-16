@@ -78,7 +78,7 @@ function CloudSettings() {
             Синхронизация между устройствами не подключена. Данные живут на этом устройстве.
           </div>
           {!showAdvanced ? (
-            <Btn onClick={() => setShowAdvanced(true)}>Настроить (Advanced)</Btn>
+            <Btn primary onClick={() => setShowAdvanced(true)}>Подключить синхронизацию</Btn>
           ) : (
             <>
               <div style={{ fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 1.6 }}>

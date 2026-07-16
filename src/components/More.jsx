@@ -199,8 +199,11 @@ const MORE_GROUPS = [
   ["Данные и доступ", [["export", "Экспорт и печать", "Календарь, Reminders и инструкция"], ["settings", "Настройки", "Расписание, синхронизация и блокировка"]]],
 ];
 
-export default function More({ s, up, date, today, deals, settings, upSettings, healthProfile, updateHealthProfile, trainingPlan, updateTrainingPlan, onLock }) {
-  const [view, setView] = useState("");
+export default function More({ initialView = "", s, up, date, today, deals, settings, upSettings, healthProfile, updateHealthProfile, trainingPlan, updateTrainingPlan, onLock }) {
+  const [view, setView] = useState(initialView);
+  useEffect(() => {
+    if (initialView) setView(initialView);
+  }, [initialView]);
   if (view) return <div className="more-detail">
     <button type="button" className="back-action" onClick={() => setView("")}>Назад к системе</button>
     {view === "development" && <Development s={s} up={up} date={date} />}

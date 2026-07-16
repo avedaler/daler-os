@@ -28,6 +28,7 @@
   --success-border: rgba(121, 169, 139, .5);
   --warning-subtle: rgba(199, 149, 85, .04);
   --warning-border: rgba(199, 149, 85, .48);
+  --danger-subtle: rgba(201, 121, 114, .06);
   --danger-border: rgba(201, 121, 114, .5);
   --hover-soft: rgba(255, 255, 255, .03);
   --overlay: rgba(4, 6, 9, .78);
@@ -73,6 +74,7 @@
   --success-border: rgba(63, 118, 91, .42);
   --warning-subtle: rgba(165, 111, 50, .06);
   --warning-border: rgba(165, 111, 50, .42);
+  --danger-subtle: rgba(166, 83, 79, .07);
   --danger-border: rgba(166, 83, 79, .42);
   --hover-soft: rgba(24, 32, 27, .035);
   --overlay: rgba(24, 32, 27, .42);
@@ -123,6 +125,9 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .theme-switch button.active { color: var(--on-accent); background: var(--gold); }
 .sync-pill { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--success-border); border-radius: 999px; color: var(--green); padding: 0 12px; font-size: 12px; white-space: nowrap; }
 .sync-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.sync-pill.local { color: var(--red); border-color: var(--danger-border); }
+.sync-pill.local i { background: var(--red); }
+.mobile-cloud-warning { display: none; }
 .score-pill { height: 42px; min-width: 64px; border: 1px solid var(--accent-border-strong); border-radius: 999px; background: transparent; color: var(--gold); cursor: pointer; }
 .score-pill strong { font: 500 20px/1 var(--mono); }
 .score-pill span { color: var(--muted); font: 11px/1 var(--mono); }
@@ -710,6 +715,10 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
   .page-header .kicker { display: none; }
   .header-status { gap: 6px; }
   .sync-pill { display: none; }
+  .mobile-cloud-warning { width: 100%; min-height: 54px; display: flex; align-items: center; gap: 10px; border: 1px solid var(--danger-border); border-radius: 8px; background: var(--danger-subtle); color: var(--red); text-align: left; margin: -1px 0 12px; padding: 9px 12px; cursor: pointer; }
+  .mobile-cloud-warning > span { min-width: 0; display: grid; gap: 2px; }
+  .mobile-cloud-warning strong { font-size: 12px; }
+  .mobile-cloud-warning small { color: var(--muted); font-size: 10px; line-height: 1.35; }
   .theme-switch { width: 68px; height: 34px; }
   .theme-switch button { width: 34px; height: 32px; }
   .score-pill { height: 36px; min-width: 54px; }
