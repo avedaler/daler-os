@@ -27,11 +27,11 @@ export const Section = ({ title, kicker, children, className = "", action }) => 
   </section>
 );
 
-export const CheckRow = ({ on, onClick, label, gold, disabled, meta }) => (
+export const CheckRow = ({ on, onClick, label, gold, disabled, meta, details }) => (
   <button type="button" onClick={onClick} aria-pressed={on} disabled={disabled}
     className={`checkrow${on ? " on" : ""}${gold ? " gold" : ""}`}>
     <span aria-hidden="true" className="box">✓</span>
-    <span className="check-copy"><span className="lbl">{label}</span>{meta && <span className="check-meta">{meta}</span>}</span>
+    <span className="check-copy"><span className="lbl">{label}</span>{meta && <span className="check-meta">{meta}</span>}{details && <span className="check-details">{details}</span>}</span>
   </button>
 );
 

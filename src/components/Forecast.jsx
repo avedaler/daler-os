@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { C, FONT, migrateDay } from "../constants";
 import { Section, Btn, StatusBadge } from "./atoms";
 import { computeAstro, astroToText, SIGNS } from "../lib/astro";
@@ -89,6 +90,7 @@ function rangeToMarkdown(from, to, r) {
 }
 
 export function TodayForecast({ date, compact = false }) {
+  const [expanded, setExpanded] = useState(false);
   const result = useMemo(() => {
     const astro = computeAstro(date);
     const numerology = personalDay(date);
@@ -97,7 +99,7 @@ export function TodayForecast({ date, compact = false }) {
   const { astro, numerology, fitness } = result;
   const fitnessLabel = fitness >= 2 ? "Высокая" : fitness <= -2 ? "Низкая" : "Нейтральная";
   const fitnessTone = fitness >= 2 ? "green" : fitness <= -2 ? "red" : "gold";
-  if (compact) return <section className="command-rail-section command-context" aria-label="Гороскопы дня">
+  if (compact) return <section className={`command-rail-section command-context${expanded ? " expanded" : ""}`} aria-label="Гороскопы дня">
     <div className="command-rail-heading"><span className="eyebrow">Гороскопы · сегодня</span><StatusBadge tone={fitnessTone}>сделки · {fitnessLabel}</StatusBadge></div>
     <div className="command-context-grid">
       <div><span>Личный день</span><strong>{numerology.pd}</strong></div>
@@ -105,6 +107,27 @@ export function TodayForecast({ date, compact = false }) {
       <div><span>Окна / риски</span><strong>{astro.windows.length} / {astro.cautions.length}</strong></div>
     </div>
     <p><strong>Контекст, не команда.</strong> {astro.cautions[0]?.text || astro.windows[0]?.text || "Решения принимаются по фактам, срокам и ответственным."}</p>
+    <button type="button" className="forecast-expand" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+      <span>{expanded ? "Скрыть подробности" : "Читать подробнее"}</span><ChevronDown size={16} aria-hidden="true" />
+    </button>
+    {expanded && <div className="forecast-expanded-details">
+      <div className="forecast-detail-block">
+        <span>Личный день · {numerology.pd}</span>
+        <p>{PD_MEANING[numerology.pd]}</p>
+      </div>
+      <div className="forecast-detail-block">
+        <span>Луна и фаза</span>
+        <p>Луна в {astro.moonSignLoc}. {astro.phase.name}, освещённость {astro.illum}%.</p>
+      </div>
+      <div className="forecast-detail-columns">
+        <div><span>Окна · {astro.windows.length}</span>{astro.windows.length ? astro.windows.map((item, index) => <p key={`${item.text}-${index}`}>{item.text}</p>) : <p>Выраженных благоприятных окон нет.</p>}</div>
+        <div><span>Риски · {astro.cautions.length}</span>{astro.cautions.length ? astro.cautions.map((item, index) => <p key={`${item.text}-${index}`}>{item.text}</p>) : <p>Выраженных факторов осторожности нет.</p>}</div>
+      </div>
+      <div className="forecast-detail-block">
+        <span>Ретроградные факторы</span>
+        <p>{astro.retro.length ? `${astro.retro.join(", ")}. Документы, сроки и договорённости перепроверять.` : "Ретроградных факторов в расчёте нет."}</p>
+      </div>
+    </div>}
   </section>;
   return <section className="today-forecast" aria-label="Расчет дня">
     <div className="today-forecast-head">

@@ -358,7 +358,7 @@ function plannedSession(date, plan, protocolTraining) {
 
 export function TrainingRecommendationCard({ date, plan, protocolTraining, updateTraining, updatePlan }) {
   const { session, reason } = plannedSession(date, plan, protocolTraining);
-  const [details, setDetails] = useState(false);
+  const [details, setDetails] = useState(true);
   const [swapOpen, setSwapOpen] = useState(false);
   const coldEligible = ["swim", "recovery"].includes(session.type) && !protocolTraining.painFlag;
   const exercises = Array.isArray(session.exercises)
@@ -369,7 +369,8 @@ export function TrainingRecommendationCard({ date, plan, protocolTraining, updat
   const exerciseMeta = (exercise) => [
     exercise.sets ? `${exercise.sets} × ${exercise.reps}` : exercise.reps,
     exercise.restSec ? `отдых ${exercise.restSec} сек` : "",
-    exercise.note || "",
+    exercise.tempo ? `темп ${exercise.tempo}` : "",
+    exercise.target || exercise.note || "",
   ].filter(Boolean).join(" · ");
   const toggleExercise = (exerciseId) => {
     const next = completedExerciseIds.includes(exerciseId)
@@ -399,6 +400,11 @@ export function TrainingRecommendationCard({ date, plan, protocolTraining, updat
     <div className="training-card">
       <div className="training-title"><div><span className="eyebrow">Рекомендация сегодня</span><h3>{session.title || SESSION_LABELS[session.type]}</h3><p>{session.subtitle || FOCUS_LABELS[session.focus]} · {session.durationLabel || session.duration || 0} минут</p></div><StatusBadge tone={session.type === "strength" ? "gold" : "green"}>{session.shortened ? "сокращено" : "по плану"}</StatusBadge></div>
       <div className="why-today"><strong>Почему сегодня:</strong> {reason}</div>
+      {session.type === "strength" && <div className="training-session-brief" aria-label="Ориентиры тренировки">
+        <div><span>Интенсивность</span><strong>1–2 повтора в запасе</strong></div>
+        <div><span>Рабочий вес</span><strong>Техника без отказа</strong></div>
+        <div><span>Стоп-сигнал</span><strong>Резкая боль или потеря контроля</strong></div>
+      </div>}
       <span className="eyebrow">Готовность</span>
       <ChoiceChips options={[
         { label: "Готов", value: "ready" }, { label: "Средне", value: "medium" }, { label: "Устал", value: "tired" }, { label: "Есть боль", value: "pain" },
@@ -407,10 +413,10 @@ export function TrainingRecommendationCard({ date, plan, protocolTraining, updat
         <Btn primary onClick={start}>Начать</Btn><Btn onClick={() => updateTraining({ status: "shortened" })}>Сократить</Btn><Btn onClick={() => setSwapOpen((value) => !value)}>Заменить</Btn><Btn onClick={complete}>Завершено</Btn>
       </div>
       {swapOpen && <div className="swap-sheet"><span className="eyebrow">Поменять на план другого дня</span><ChoiceChips options={Object.keys(DAY_LABELS).map((key) => ({ label: DAY_LABELS[key], value: key }))} value="" onChange={(key) => { swap(key); updateTraining({ completedExerciseIds: [], status: "planned" }); setSwapOpen(false); }} /></div>}
-      <button type="button" className="text-action" onClick={() => setDetails((value) => !value)}>{details ? "Скрыть план" : `План · ${completedCount}/${exercises.length}`}</button>
+      <button type="button" className="text-action" onClick={() => setDetails((value) => !value)}>{details ? `Скрыть упражнения · ${completedCount}/${exercises.length}` : `Упражнения · ${completedCount}/${exercises.length}`}</button>
       {details && <div className="exercise-plan">
         {session.warmup && <p className="training-plan-note">{session.warmup}</p>}
-        <div className="exercise-plan-list">{exercises.map((exercise) => <CheckRow key={exercise.id} on={completedExerciseIds.includes(exercise.id)} onClick={() => toggleExercise(exercise.id)} label={exercise.name} meta={exerciseMeta(exercise)} />)}</div>
+        <div className="exercise-plan-list">{exercises.map((exercise) => <CheckRow key={exercise.id} on={completedExerciseIds.includes(exercise.id)} onClick={() => toggleExercise(exercise.id)} label={exercise.name} meta={exerciseMeta(exercise)} details={exercise.cue} />)}</div>
         {session.cardioAfter && <p className="training-plan-note"><strong>После тренировки:</strong> {session.cardioAfter}</p>}
       </div>}
       <div className="cold-row">

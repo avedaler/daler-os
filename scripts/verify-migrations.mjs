@@ -87,6 +87,15 @@ assert.equal(migratedTraining.days.monday.focus, "push", "v1 plan upgrades to th
 assert.equal(migratedTraining.legacyDays.monday.focus, "legacy_custom", "previous plan data remains archived");
 assert.equal(migratedTraining.history.length, 1);
 assert.equal(migratedTraining.userOverrides["2026-01-02"].focus, "legacy_rest");
+const enrichedTraining = migrateTrainingPlan({
+  schemaVersion: 2,
+  days: { thursday: { exercises: [{ id: "barbell-squat", name: "Мой присед", sets: 5, reps: "5" }] } },
+});
+const enrichedSquat = enrichedTraining.days.thursday.exercises[0];
+assert.equal(enrichedSquat.name, "Мой присед", "user exercise changes remain authoritative");
+assert.equal(enrichedSquat.sets, 5, "user training volume is preserved");
+assert.equal(enrichedSquat.tempo, "3–1–1", "new exercise guidance enriches saved plans by exercise id");
+assert.ok(enrichedSquat.cue.includes("колени"), "saved plans receive the detailed technique cue");
 
 const achievementEvents = dailyEvents(migrateDay({
   primaryOutcome: { text: "Оплата получена", status: "done" },

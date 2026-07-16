@@ -215,12 +215,12 @@ export const defaultTrainingPlan = () => ({
       type: "strength", focus: "legs", title: "НОГИ", subtitle: "Ноги · ягодицы · пресс", duration: 70, durationLabel: "60–75",
       warmup: "Разминка 5–10 минут", cardioAfter: "Ходьба 10–15 минут",
       exercises: [
-        { id: "barbell-squat", name: "Приседания со штангой", sets: 4, reps: "6–8", restSec: 120 },
-        { id: "romanian-deadlift", name: "Румынская тяга", sets: 3, reps: "8–10", restSec: 90 },
-        { id: "leg-press", name: "Жим ногами", sets: 3, reps: "10–12", restSec: 90 },
-        { id: "leg-curl", name: "Сгибание ног лёжа", sets: 3, reps: "10–12", restSec: 60 },
-        { id: "calf-raise", name: "Подъёмы на носки стоя или в тренажёре", sets: 4, reps: "12–15", restSec: 60 },
-        { id: "plank", name: "Планка", sets: 3, reps: "45–60 сек", restSec: 60 },
+        { id: "barbell-squat", name: "Приседания со штангой", sets: 4, reps: "6–8", restSec: 120, target: "квадрицепс · ягодицы · корпус", tempo: "3–1–1", cue: "Стопы устойчиво, колени по линии носков, корпус собран. Остановить подход при потере глубины или нейтральной спины." },
+        { id: "romanian-deadlift", name: "Румынская тяга", sets: 3, reps: "8–10", restSec: 90, target: "задняя поверхность бедра · ягодицы", tempo: "3–1–1", cue: "Таз назад, штанга близко к ногам, спина нейтральна. Опускать только до сохранения контроля и натяжения." },
+        { id: "leg-press", name: "Жим ногами", sets: 3, reps: "10–12", restSec: 90, target: "квадрицепс · ягодицы", tempo: "2–1–1", cue: "Поясница прижата, колени не запирать. Глубина только до момента, пока таз не начинает подкручиваться." },
+        { id: "leg-curl", name: "Сгибание ног лёжа", sets: 3, reps: "10–12", restSec: 60, target: "бицепс бедра", tempo: "2–1–2", cue: "Таз прижат к скамье, движение без рывка. Секунда фиксации в верхней точке." },
+        { id: "calf-raise", name: "Подъёмы на носки стоя или в тренажёре", sets: 4, reps: "12–15", restSec: 60, target: "икроножные", tempo: "2–1–2", cue: "Полная контролируемая амплитуда: пауза внизу и наверху, без раскачивания корпусом." },
+        { id: "plank", name: "Планка", sets: 3, reps: "45–60 сек", restSec: 60, target: "корпус · ягодицы", tempo: "статика", cue: "Рёбра собраны, ягодицы напряжены, поясница не провисает. Завершить подход, когда положение перестаёт быть ровным." },
       ],
     },
     friday: {
@@ -268,7 +268,12 @@ export function migrateTrainingPlan(raw) {
     return [dayKey, {
       ...baseDay,
       ...existing,
-      exercises: Array.isArray(existing.exercises) ? existing.exercises : baseDay.exercises,
+      exercises: Array.isArray(existing.exercises)
+        ? existing.exercises.map((exercise) => ({
+          ...(baseDay.exercises.find((baseExercise) => baseExercise.id === exercise.id) || {}),
+          ...exercise,
+        }))
+        : baseDay.exercises,
     }];
   }));
   return {
