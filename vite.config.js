@@ -2,10 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-// base: на GitHub Pages сайт живёт по пути /daler-os/; при переходе на
-// собственный домен (GoDaddy) или Vercel задать DEPLOY_BASE=/.
+// Production is hosted at the root on Vercel. GitHub Pages can still set
+// DEPLOY_BASE=/daler-os/ explicitly when building its subpath deployment.
 export default defineConfig(({ command }) => ({
-  base: command === "build" ? (process.env.DEPLOY_BASE || "/daler-os/") : "/",
+  base: command === "build" ? (process.env.DEPLOY_BASE || "/") : "/",
   plugins: [
     react(),
     VitePWA({
