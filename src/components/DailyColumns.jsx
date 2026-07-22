@@ -16,6 +16,7 @@ import {
   Sun,
   TriangleAlert,
   X,
+  Plus,
 } from "lucide-react";
 import {
   AFFIRMATIONS,
@@ -26,11 +27,14 @@ import {
   REFUSAL_OPTIONS,
   STATE_OPTIONS,
   STAGES,
+  migrateDay,
   primaryOutcomeText,
   withPrimaryOutcome,
 } from "../constants";
 import { computeAstro } from "../lib/astro";
 import { addDays, weekday } from "../lib/date";
+import { buildTaskIcs, downloadFile } from "../lib/ics";
+import { loadDay, saveDay } from "../lib/store";
 import { dealStatus } from "./Deals";
 import { TodayForecast } from "./Forecast";
 import { Development } from "./More";
@@ -469,12 +473,37 @@ export function DeepWorkLauncher({ work, updateWork, outcome }) {
   );
 }
 
-export function WorkPriorityStack({ deals, setDeals, today, northStar, compact = false }) {
+export function WorkPriorityStack({ deals, setDeals, today, northStar, work, updateWork, compact = false }) {
   const priorities = [...deals].sort((a, b) => priorityScore(b, today, northStar) - priorityScore(a, today, northStar)).slice(0, 3);
+  const tasks = Array.isArray(work?.tasks) ? work.tasks : [];
+  const [draft, setDraft] = useState({ title: "", notes: "", date: today, time: "", kind: "task" });
+  const [adding, setAdding] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => setDraft((current) => ({ ...current, date: today })), [today]);
   const updateDeal = (deal, patch) => setDeals(deals.map((item) => item.id === deal.id ? { ...item, ...patch, updated: today } : item));
+  const updateTask = (id, patch) => updateWork({ tasks: tasks.map((task) => task.id === id ? { ...task, ...patch } : task) });
+  const removeTask = (id) => updateWork({ tasks: tasks.filter((task) => task.id !== id) });
+  const addTask = async () => {
+    const title = draft.title.trim();
+    if (!title) return setMessage("Введите название");
+    const task = { ...draft, title, notes: draft.notes.trim(), id: globalThis.crypto?.randomUUID?.() || `${Date.now()}`, date: draft.date || today, done: false };
+    if (task.date === today) {
+      updateWork({ tasks: [...tasks, task] });
+    } else {
+      const target = migrateDay(await loadDay(task.date));
+      const targetTasks = Array.isArray(target.dailyProtocol.work.tasks) ? target.dailyProtocol.work.tasks : [];
+      target.dailyProtocol.work.tasks = [...targetTasks, task];
+      await saveDay(task.date, target);
+    }
+    setDraft({ title: "", notes: "", date: today, time: "", kind: "task" });
+    setAdding(false);
+    setMessage(task.date === today ? "Добавлено" : `Добавлено на ${task.date}`);
+  };
+  const completed = priorities.filter((deal) => (deal.movementCount || 0) > 0).length + tasks.filter((task) => task.done).length;
+  const total = priorities.length + tasks.length;
   return (
     <div className={`priority-stack${compact ? " command-priority-stack" : ""}`}>
-      <div className="stack-heading"><div><span className="eyebrow">P0 / P1</span><h3>Три движения</h3></div><span>{priorities.length} из 3</span></div>
+      <div className="stack-heading"><div><span className="eyebrow">P0 / P1</span><h3>Задачи и события</h3></div><span>{completed} из {total}</span></div>
       {priorities.map((deal) => {
         const status = dealStatus(deal, today);
         const tone = status.kind === "overdue" ? "red" : status.kind === "today" ? "amber" : status.kind === "nostep" ? "amber" : "neutral";
@@ -493,7 +522,24 @@ export function WorkPriorityStack({ deals, setDeals, today, northStar, compact =
           <Btn onClick={() => updateDeal(deal, { blocker: deal.blocker || "Требует решения" })}>Блокер</Btn>
         </ActionRow>;
       })}
-      {priorities.length === 0 && <p className="quiet-copy">Нет сделок с назначенным движением. Добавь next action в разделе «Сделки».</p>}
+      {tasks.map((task) => <div className={`command-deal-row task-row${task.done ? " done" : ""}`} key={task.id}>
+        <div className="command-deal-copy"><strong>{task.title}</strong><span>{[task.notes, task.time].filter(Boolean).join(" · ") || (task.kind === "event" ? "Событие" : "Задача")}</span></div>
+        <StatusBadge tone={task.done ? "green" : "neutral"}>{task.date}</StatusBadge>
+        <div className="command-deal-actions">
+          <button type="button" title={task.done ? "Вернуть в работу" : "Выполнено"} aria-label={`${task.done ? "Вернуть в работу" : "Выполнено"}: ${task.title}`} onClick={() => updateTask(task.id, { done: !task.done })}><Check size={16} /></button>
+          <button type="button" title="Добавить в календарь" aria-label={`Добавить в календарь: ${task.title}`} onClick={() => downloadFile(`daler-os-${task.date}.ics`, buildTaskIcs(task))}><CalendarDays size={16} /></button>
+          <button type="button" title="Удалить" aria-label={`Удалить: ${task.title}`} onClick={() => removeTask(task.id)}><X size={16} /></button>
+        </div>
+      </div>)}
+      {total === 0 && <p className="quiet-copy">Задач пока нет.</p>}
+      {!adding ? <button type="button" className="task-add-trigger" onClick={() => setAdding(true)}><Plus size={16} aria-hidden="true" />Новая задача или событие</button> : <div className="task-composer">
+        <div className="task-composer-head"><ChoiceChips options={[{ label: "Задача", value: "task" }, { label: "Событие", value: "event" }]} value={draft.kind} onChange={(kind) => setDraft({ ...draft, kind })} /><button type="button" onClick={() => setAdding(false)} aria-label="Закрыть"><X size={17} /></button></div>
+        <Field label="Название" value={draft.title} onChange={(title) => setDraft({ ...draft, title })} placeholder="Что нужно сделать" />
+        <Field label="Заметка" value={draft.notes} onChange={(notes) => setDraft({ ...draft, notes })} placeholder="Контекст или место" />
+        <div className="task-date-grid"><Field label="Дата" type="date" value={draft.date} onChange={(date) => setDraft({ ...draft, date })} /><Field label="Время" type="time" value={draft.time} onChange={(time) => setDraft({ ...draft, time })} /></div>
+        <Btn primary onClick={addTask}>Добавить</Btn>
+      </div>}
+      {message && <span className="task-message" aria-live="polite">{message}</span>}
     </div>
   );
 }
@@ -530,7 +576,7 @@ export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, b
         <ChoiceChips green options={OUTCOME_STATUS} value={outcome.status} onChange={(status) => updateOutcome({ status })} />
       </div>}
       <DeepWorkLauncher work={work} updateWork={updateWork} outcome={text} />
-      <WorkPriorityStack deals={deals} setDeals={setDeals} today={today} northStar={northStar} compact={bare} />
+      <WorkPriorityStack deals={deals} setDeals={setDeals} today={today} northStar={northStar} work={work} updateWork={updateWork} compact={bare} />
       {(outcome.chairmanOnly || chairman.length > 0) && <Section kicker="Только Далер" title="Действия личного уровня" className="nested-section">
         {outcome.chairmanOnly && <ActionRow title={text || "Главный результат"} meta="Личное решение / closing"><Btn onClick={() => updateOutcome({ status: "done" })}>Готово</Btn></ActionRow>}
         {chairman.map((deal) => <ActionRow key={deal.id} title={deal.nextStep || deal.name} meta={`${deal.name}${deal.nextDate ? ` · ${deal.nextDate}` : ""}`}><Btn onClick={() => setDeals(deals.map((item) => item.id === deal.id ? { ...item, movementCount: (item.movementCount || 0) + 1 } : item))}>Готово</Btn></ActionRow>)}

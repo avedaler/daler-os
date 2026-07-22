@@ -37,6 +37,19 @@ function wrap(events) {
   return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//DALER OS//RU", "CALSCALE:GREGORIAN", VTZ, ...events, "END:VCALENDAR"].join("\r\n");
 }
 
+export function buildTaskIcs(task) {
+  const iso = task.date || new Date().toISOString().slice(0, 10);
+  return wrap([vevent({
+    uid: `task-${task.id || iso}-${iso}`,
+    iso,
+    start: task.time || "09:00",
+    minutes: Number(task.minutes) || 30,
+    allDay: !task.time,
+    title: task.title || "DALER OS · Задача",
+    desc: task.notes || "",
+  })]);
+}
+
 // События одного дня: ритуалы + фокус + сделки с шагом на эту дату
 export function buildDayIcs(iso, s, settings, deals) {
   const ev = [];
@@ -61,6 +74,13 @@ export function buildDayIcs(iso, s, settings, deals) {
       uid: `deal-${d.id}-${iso}`, iso, allDay: true,
       title: `Сделка: ${d.name} — ${d.nextStep || "следующий шаг"}`,
       desc: `Стадия: ${STAGES[d.stage]}${d.blocker ? `\nБлокер: ${d.blocker}` : ""}`,
+    }));
+  }
+  for (const task of s.dailyProtocol?.work?.tasks || []) {
+    ev.push(vevent({
+      uid: `task-${task.id || iso}-${iso}`, iso,
+      start: task.time || "09:00", minutes: Number(task.minutes) || 30, allDay: !task.time,
+      title: task.title || "DALER OS · Задача", desc: task.notes || "",
     }));
   }
   return wrap(ev);

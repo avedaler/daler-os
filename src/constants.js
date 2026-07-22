@@ -346,6 +346,7 @@ export const emptyDailyProtocol = () => ({
     deepWorkEndsAt: null,
     meetingPrepIds: [],
     meetingPrep: null,
+    tasks: [],
     developmentPromptId: null,
     artifact: "",
   },

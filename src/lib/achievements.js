@@ -96,6 +96,11 @@ export function dailyEvents(day) {
   const artifact = clean(work.artifact) || clean(day.artifactType) || clean(day.architectResult);
   if (artifact) add("artifact", "Рабочий артефакт", "Работа", "gold", artifact);
   if (work.meetingPrep && Object.values(work.meetingPrep).some((value) => clean(value))) add("meeting-prep", "Встреча подготовлена", "Работа", "gold", work.meetingPrep.outcome);
+  (Array.isArray(work.tasks) ? work.tasks : []).forEach((task, index) => {
+    const title = clean(task.title);
+    if (!title) return;
+    add(`task-${task.id || index}`, title, task.kind === "event" ? "Календарь" : "Задача", task.done ? "green" : "neutral", [task.time, clean(task.notes)].filter(Boolean).join(" · "));
+  });
 
   const mainWin = clean(evening.mainWin) || clean(day.wins?.[0]);
   if (mainWin) add("main-win", "Главная победа дня", "Достижение", "gold", mainWin);

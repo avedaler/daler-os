@@ -287,6 +287,15 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
 .command-deal-actions button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
 .command-deal-actions button:first-child { color: var(--gold); border-color: var(--accent-border-strong); }
 .command-deal-actions button:hover { color: var(--gold); background: var(--accent-soft); }
+.command-deal-row.task-row.done .command-deal-copy { opacity: .58; }
+.command-deal-row.task-row.done .command-deal-copy strong { text-decoration: line-through; }
+.task-add-trigger { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px dashed var(--border); border-radius: 7px; background: transparent; color: var(--muted); margin-top: 9px; cursor: pointer; }
+.task-add-trigger:hover { border-color: var(--gold); color: var(--gold); background: var(--accent-soft); }
+.task-composer { display: grid; gap: 10px; border-top: 1px solid var(--border); margin-top: 9px; padding-top: 12px; }
+.task-composer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.task-composer-head > button { width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
+.task-date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.task-message { display: block; color: var(--gold); font-size: 11px; margin-top: 7px; }
 .command-work-tools { grid-template-columns: minmax(180px, 1fr) auto; align-items: start; gap: 8px; }
 .command-artifacts { position: relative; }
 .command-artifacts summary { min-height: 44px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); padding: 0 11px; cursor: pointer; list-style: none; }
@@ -758,6 +767,7 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
   .command-deal-row { grid-template-columns: minmax(120px, 1fr) auto; }
   .command-deal-row .status-badge { justify-self: end; }
   .command-deal-actions { grid-column: 1 / -1; }
+  .task-date-grid { grid-template-columns: 1fr; }
   .command-work-tools { grid-template-columns: 1fr; }
   .evening-next-strip { min-height: 72px; grid-template-columns: 23px 1fr; padding: 11px 13px; }
   .evening-next-strip strong { font-size: 15px; }
