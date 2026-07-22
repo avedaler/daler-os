@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
-import { C, FONT, emptyDay } from "../constants";
-import { Section, Btn } from "./atoms";
-import { computeAstro, astroToText, SIGNS } from "../lib/astro";
+import { ChevronDown } from "lucide-react";
+import { C, FONT, migrateDay } from "../constants";
+import { Section, Btn, StatusBadge } from "./atoms";
+import { computeAstro, astroToText, MOON_SIGN_TEXT, SIGNS } from "../lib/astro";
 import { personalDay, PD_MEANING } from "../lib/numerology";
 import { prettyDate, weekday, addDays } from "../lib/date";
 import { loadDay } from "../lib/store";
@@ -88,6 +89,61 @@ function rangeToMarkdown(from, to, r) {
   return L.join("\n");
 }
 
+export function TodayForecast({ date, compact = false }) {
+  const [expanded, setExpanded] = useState(false);
+  const result = useMemo(() => {
+    const astro = computeAstro(date);
+    const numerology = personalDay(date);
+    return { astro, numerology, fitness: dealFitness(astro, numerology.pd) };
+  }, [date]);
+  const { astro, numerology, fitness } = result;
+  const fitnessLabel = fitness >= 2 ? "Высокая" : fitness <= -2 ? "Низкая" : "Нейтральная";
+  const fitnessTone = fitness >= 2 ? "green" : fitness <= -2 ? "red" : "gold";
+  if (compact) return <section className={`command-rail-section command-context${expanded ? " expanded" : ""}`} aria-label="Гороскопы дня">
+    <div className="command-rail-heading"><span className="eyebrow">Гороскопы · сегодня</span><StatusBadge tone={fitnessTone}>сделки · {fitnessLabel}</StatusBadge></div>
+    <div className="command-context-grid">
+      <div><span>Личный день</span><strong>{numerology.pd}</strong></div>
+      <div><span>Луна</span><strong>В {astro.moonSignLoc}</strong></div>
+      <div><span>Окна / риски</span><strong>{astro.windows.length} / {astro.cautions.length}</strong></div>
+    </div>
+    <p><strong>Контекст, не команда.</strong> {astro.cautions[0]?.text || astro.windows[0]?.text || "Решения принимаются по фактам, срокам и ответственным."}</p>
+    <button type="button" className="forecast-expand" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+      <span>{expanded ? "Скрыть подробности" : "Читать подробнее"}</span><ChevronDown size={16} aria-hidden="true" />
+    </button>
+    {expanded && <div className="forecast-expanded-details">
+      <div className="forecast-detail-block">
+        <span>Личный день · {numerology.pd}</span>
+        <p>{PD_MEANING[numerology.pd]}</p>
+      </div>
+      <div className="forecast-detail-block">
+        <span>Прогноз Луны</span>
+        <p><strong>Луна в {astro.moonSignLoc}</strong> — {MOON_SIGN_TEXT[astro.moonSign]}</p>
+        <p>{astro.phase.name}, освещённость {astro.illum}%.</p>
+      </div>
+      <div className="forecast-detail-columns">
+        <div><span>Окна · {astro.windows.length}</span>{astro.windows.length ? astro.windows.map((item, index) => <p key={`${item.text}-${index}`}>{item.text}</p>) : <p>Выраженных благоприятных окон нет.</p>}</div>
+        <div><span>Риски · {astro.cautions.length}</span>{astro.cautions.length ? astro.cautions.map((item, index) => <p key={`${item.text}-${index}`}>{item.text}</p>) : <p>Выраженных факторов осторожности нет.</p>}</div>
+      </div>
+      <div className="forecast-detail-block">
+        <span>Ретроградные факторы</span>
+        <p>{astro.retro.length ? `${astro.retro.join(", ")}. Документы, сроки и договорённости перепроверять.` : "Ретроградных факторов в расчёте нет."}</p>
+      </div>
+    </div>}
+  </section>;
+  return <section className="today-forecast" aria-label="Расчет дня">
+    <div className="today-forecast-head">
+      <div><span className="kicker">Расчет дня</span><h2>Астрономический и личный контекст</h2></div>
+      <StatusBadge tone={fitnessTone}>Сделки · {fitnessLabel}</StatusBadge>
+    </div>
+    <div className="forecast-metrics">
+      <div><span>Личный день</span><strong>{numerology.pd}</strong><small>{PD_MEANING[numerology.pd]}</small></div>
+      <div><span>Луна</span><strong>В {astro.moonSignLoc}</strong><small>{astro.phase.name} · освещенность {astro.illum}%</small></div>
+      <div><span>Окна / риски</span><strong>{astro.windows.length} / {astro.cautions.length}</strong><small>{astro.retro.length ? `Ретроградны: ${astro.retro.join(", ")}` : "Ретроградных факторов нет"}</small></div>
+    </div>
+    <div className="forecast-context"><strong>Контекст, не команда.</strong><span>{astro.cautions[0]?.text || astro.windows[0]?.text || "Решения принимаются по фактам, срокам и ответственным."}</span></div>
+  </section>;
+}
+
 export default function Forecast({ today }) {
   const [mode, setMode] = useState("day");
   const [anchor, setAnchor] = useState(today);
@@ -111,7 +167,7 @@ export default function Forecast({ today }) {
         const v = await loadDay(d);
         if (!v) continue;
         filled++;
-        ptsSum += dayScore({ ...emptyDay(), ...v }).pts;
+        ptsSum += dayScore(migrateDay(v)).pts;
         if (v.proofDone) proofs++;
       }
       setFacts(filled ? { filled, avg: Math.round((ptsSum / filled) * 10) / 10, proofs } : null);
@@ -144,7 +200,7 @@ export default function Forecast({ today }) {
 
   const dateInput = (val, onChange, aria) => (
     <input type="date" value={val} aria-label={aria} onChange={(e) => e.target.value && onChange(e.target.value)}
-      style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: C.ivory, padding: "7px 10px", fontSize: 13, fontFamily: FONT.mono, colorScheme: "dark" }} />
+      style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: C.ivory, padding: "7px 10px", fontSize: 13, fontFamily: FONT.mono, colorScheme: "inherit" }} />
   );
 
   const single = r.days.length === 1 ? r.days[0] : null;
@@ -236,7 +292,7 @@ export default function Forecast({ today }) {
                 {r.days.map((d) => {
                   const mark = d.fit >= 2 ? { t: "✓ да", c: C.green } : d.fit <= -2 ? { t: "избегать", c: C.red } : { t: "·", c: C.muted };
                   return (
-                    <tr key={d.iso} style={{ borderBottom: `1px solid ${C.line}`, background: d.iso === today ? "rgba(200,164,92,.06)" : "transparent" }}>
+                    <tr key={d.iso} style={{ borderBottom: `1px solid ${C.line}`, background: d.iso === today ? "var(--accent-subtle)" : "transparent" }}>
                       <td style={{ padding: "7px 8px", color: C.ivory, whiteSpace: "nowrap" }}>{shortDate(d.iso)}</td>
                       <td style={{ padding: "7px 8px", fontFamily: FONT.mono, color: d.pd === 8 ? C.gold : C.ivory }}>{d.pd}</td>
                       <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>{MOON_GLYPH[d.a.moonSign]} {SIGNS[d.a.moonSign]}</td>

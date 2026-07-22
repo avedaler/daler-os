@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { C, FONT, emptyDay, migrateDay } from "../constants";
+import { C, FONT, migrateDay, primaryOutcomeText } from "../constants";
 import { Section } from "./atoms";
 import { loadDay } from "../lib/store";
 import { prettyDate, weekday, addDays, isoWeek } from "../lib/date";
@@ -17,13 +17,13 @@ async function collectWeek(monday) {
 
 function stats(rows) {
   const filled = rows.filter((r) => r.data);
-  const scores = filled.map((r) => dayScore({ ...emptyDay(), ...r.data }));
+  const scores = filled.map((r) => dayScore(r.data));
   const avg = scores.length ? scores.reduce((a, b) => a + b.pts, 0) / scores.length : 0;
   const hab = (k) => filled.filter((r) => r.data.habits?.[k]).length;
   return {
     filled: filled.length,
     avg: Math.round(avg * 10) / 10,
-    proofs: filled.filter((r) => r.data.outcomeStatus === "done" || r.data.proofDone).length,
+    proofs: filled.filter((r) => r.data.primaryOutcome.status === "done" || r.data.proofDone).length,
     trainings: filled.filter((r) => r.data.blocks?.health).length,
     architect: filled.filter((r) => r.data.blocks?.architect).length,
     shutdowns: filled.filter((r) => r.data.shutdown).length,
@@ -109,7 +109,7 @@ export default function Week({ date }) {
               </div>
             );
           }
-          const sc = dayScore({ ...emptyDay(), ...data });
+          const sc = dayScore(data);
           const w = Math.round((sc.pts / sc.max) * 100);
           return (
             <div key={d} style={{ marginBottom: 14 }}>
@@ -120,7 +120,7 @@ export default function Week({ date }) {
               <div style={{ height: 6, background: C.panel2, borderRadius: 3, border: `1px solid ${C.line}` }}>
                 <div style={{ width: `${w}%`, height: "100%", background: sc.pts >= 8 ? C.green : C.gold, borderRadius: 3 }} />
               </div>
-              {data.primaryOutcome && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>Результат: {data.primaryOutcome}{data.outcomeStatus === "done" || data.proofDone ? " ✓" : " (не закрыт)"}</div>}
+              {primaryOutcomeText(data.primaryOutcome) && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>Результат: {primaryOutcomeText(data.primaryOutcome)}{data.primaryOutcome.status === "done" || data.proofDone ? " ✓" : " (не закрыт)"}</div>}
             </div>
           );
         })}

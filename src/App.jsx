@@ -1,194 +1,431 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { C, FONT, emptyDay, migrateDay, DEFAULT_SETTINGS } from "./constants";
-import { klNow, prettyDate, addDays, isoWeek } from "./lib/date";
-import { personalDay } from "./lib/numerology";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CloudOff, Compass, Moon, Sun } from "lucide-react";
+import {
+  DEFAULT_SETTINGS,
+  defaultHealthProfile,
+  defaultTrainingPlan,
+  emptyDay,
+  migrateDay,
+  migrateHealthProfile,
+  migrateTrainingPlan,
+} from "./constants";
+import { addDays, isoWeek, klNow, prettyDate } from "./lib/date";
 import { dayScore, morningProgress } from "./lib/score";
-import { loadDay, saveDay, loadSettings, saveSettings, loadDeals, saveDeals, loadWeek, daysSinceExport } from "./lib/store";
+import {
+  daysSinceExport,
+  loadDay,
+  loadDeals,
+  loadHealthProfile,
+  loadSettings,
+  loadTrainingPlan,
+  loadWeek,
+  saveDay,
+  saveDeals,
+  saveHealthProfile,
+  saveSettings,
+  saveTrainingPlan,
+} from "./lib/store";
 import { startScheduler } from "./lib/notify";
-import { Rule } from "./components/atoms";
 import Today from "./components/Today";
-import Deals from "./components/Deals";
-import { dealStatus } from "./components/Deals";
+import Deals, { dealStatus } from "./components/Deals";
 import Overview from "./components/Overview";
 import More from "./components/More";
 import LockScreen from "./components/LockScreen";
 import PrintSheet from "./components/PrintSheet";
 import { hasLock, isUnlockedThisSession } from "./lib/lock";
-import { cloudConfigured, currentUser, syncAll } from "./lib/cloud";
+import { cloudConfigured, currentUser, subscribeCloudChanges, syncAll } from "./lib/cloud";
+
+const NAV = [
+  ["today", "Сегодня"],
+  ["deals", "Сделки"],
+  ["review", "Обзор"],
+  ["more", "Ещё"],
+];
+
+const PAGE_TITLES = {
+  today: "Сегодня",
+  deals: "Сделки",
+  review: "Обзор исполнения",
+  more: "Система",
+};
+
+const THEME_STORAGE_KEY = "daler-os-theme";
+const CLOUD_REFRESH_MS = 30000;
+
+function normalizeTheme(value) {
+  return value === "light" ? "light" : "dark";
+}
+
+function storedTheme() {
+  try {
+    return normalizeTheme(localStorage.getItem(THEME_STORAGE_KEY));
+  } catch {
+    return "dark";
+  }
+}
+
+function dayKicker(date, today) {
+  if (date === today) return "Сегодня";
+  if (date === addDays(today, 1)) return "Завтра";
+  if (date === addDays(today, -1)) return "Вчера";
+  return "Выбранный день";
+}
+
+async function loadWorkspaceSnapshot(date) {
+  const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, previousReview] = await Promise.all([
+    loadDay(date),
+    loadSettings(),
+    loadDeals(),
+    loadHealthProfile(),
+    loadTrainingPlan(),
+    loadWeek(isoWeek(addDays(date, -7))),
+  ]);
+  const nextSettings = {
+    ...DEFAULT_SETTINGS,
+    ...(rawSettings || {}),
+    theme: normalizeTheme(rawSettings?.theme || storedTheme()),
+  };
+  return {
+    day: migrateDay(rawDay),
+    settings: nextSettings,
+    deals: rawDeals,
+    healthProfile: migrateHealthProfile(rawProfile, nextSettings),
+    trainingPlan: migrateTrainingPlan(rawPlan),
+    northStar: previousReview?.nextWeek?.trim() || "",
+  };
+}
 
 export default function App() {
   const [locked, setLocked] = useState(() => hasLock() && !isUnlockedThisSession());
   const [now, setNow] = useState(klNow());
   const [date, setDate] = useState(now.date);
   const [tab, setTab] = useState("today");
+  const [reviewView, setReviewView] = useState("week");
   const [s, setS] = useState(emptyDay());
   const [deals, setDealsState] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, theme: storedTheme() }));
+  const [healthProfile, setHealthProfile] = useState(defaultHealthProfile());
+  const [trainingPlan, setTrainingPlan] = useState(defaultTrainingPlan());
   const [northStar, setNorthStar] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [loadedDate, setLoadedDate] = useState("");
   const [saveState, setSaveState] = useState("");
+  const [syncNote, setSyncNote] = useState("");
+  const [cloudStatus, setCloudStatus] = useState(() => cloudConfigured() ? "checking" : "local");
+  const [moreInitialView, setMoreInitialView] = useState("");
   const saveTimer = useRef(null);
   const settingsRef = useRef(settings);
+  const dayRef = useRef(s);
+  const dateRef = useRef(date);
+  const loadedRef = useRef(loaded);
+  const loadedDateRef = useRef(loadedDate);
+  const syncedOnce = useRef(false);
+  const skipSave = useRef(true);
   settingsRef.current = settings;
-  const isToday = date === now.date;
+  dayRef.current = s;
+  dateRef.current = date;
+  loadedRef.current = loaded;
+  loadedDateRef.current = loadedDate;
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      const n = klNow();
-      setNow((prev) => {
-        if (prev.date !== n.date) setDate((d) => (d === prev.date ? n.date : d));
-        return n;
-      });
-    }, 30000);
-    return () => clearInterval(t);
+  const applyWorkspaceSnapshot = useCallback((snapshot, targetDate) => {
+    if (!snapshot || dateRef.current !== targetDate) return false;
+    skipSave.current = true;
+    setS(snapshot.day);
+    setSettings(snapshot.settings);
+    setDealsState(snapshot.deals);
+    setHealthProfile(snapshot.healthProfile);
+    setTrainingPlan(snapshot.trainingPlan);
+    setNorthStar(snapshot.northStar);
+    return true;
   }, []);
 
-  const syncedOnce = useRef(false);
-  const [syncNote, setSyncNote] = useState("");
-  const skipSave = useRef(true);
+  const refreshCloudStatus = useCallback(async () => {
+    if (!cloudConfigured()) {
+      setCloudStatus("local");
+      return;
+    }
+    try {
+      setCloudStatus(await currentUser() ? "online" : "signed_out");
+    } catch {
+      setCloudStatus("offline");
+    }
+  }, []);
 
   useEffect(() => {
+    refreshCloudStatus();
+    window.addEventListener("daleros-cloud-status", refreshCloudStatus);
+    return () => window.removeEventListener("daleros-cloud-status", refreshCloudStatus);
+  }, [refreshCloudStatus]);
+
+  useEffect(() => {
+    const theme = normalizeTheme(settings.theme);
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f2f4f2" : "#101112");
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch { /* settings remain available in IndexedDB */ }
+  }, [settings.theme]);
+
+  const selectDate = useCallback((nextDate) => {
+    const currentDate = dateRef.current;
+    if (!nextDate || nextDate === currentDate) return;
+    clearTimeout(saveTimer.current);
+    if (loadedRef.current && loadedDateRef.current === currentDate) {
+      saveDay(currentDate, dayRef.current)
+        .then(() => setSaveState("сохранено"))
+        .catch(() => setSaveState("ошибка сохранения"));
+    }
+    setDate(nextDate);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const next = klNow();
+      setNow((previous) => {
+        if (previous.date !== next.date && dateRef.current === previous.date) selectDate(next.date);
+        return next;
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [selectDate]);
+
+  useEffect(() => startScheduler(() => settingsRef.current), []);
+
+  useEffect(() => {
+    let active = true;
+    setLoaded(false);
+    setLoadedDate("");
     (async () => {
       if (!syncedOnce.current && cloudConfigured()) {
         syncedOnce.current = true;
         try {
           if (await currentUser()) {
             setSyncNote("синхронизация…");
-            const r = await Promise.race([syncAll(), new Promise((rs) => setTimeout(() => rs({ ok: false, reason: "таймаут" }), 6000))]);
-            setSyncNote(r.ok ? (r.pulled ? `облако: получено ${r.pulled}` : "облако: актуально") : "");
-            setTimeout(() => setSyncNote(""), 3000);
+            const result = await Promise.race([
+              syncAll(),
+              new Promise((resolve) => setTimeout(() => resolve({ ok: false, reason: "timeout" }), 6000)),
+            ]);
+            if (active) setSyncNote(result.ok ? (result.pulled ? `получено ${result.pulled}` : "синхронизировано") : "");
           }
-        } catch { /* офлайн */ }
+        } catch { /* offline-first */ }
       }
-      try {
-        const v = await loadDay(date);
-        skipSave.current = true;
-        setS(v ? migrateDay(v) : emptyDay());
-        const st = await loadSettings();
-        if (st) setSettings({ ...DEFAULT_SETTINGS, ...st });
-        setDealsState(await loadDeals());
-        const prevReview = await loadWeek(isoWeek(addDays(date, -7)));
-        setNorthStar(prevReview?.nextWeek?.trim() || "");
-      } catch { /* первый запуск */ }
-      setLoaded(true);
-    })();
-  }, [date]);
 
-  useEffect(() => startScheduler(() => settingsRef.current), []);
+      try {
+        const snapshot = await loadWorkspaceSnapshot(date);
+        if (!active) return;
+        applyWorkspaceSnapshot(snapshot, date);
+      } finally {
+        if (active) {
+          setLoadedDate(date);
+          setLoaded(true);
+        }
+      }
+    })();
+    return () => { active = false; };
+  }, [date, applyWorkspaceSnapshot]);
 
   useEffect(() => {
-    if (!loaded) return;
-    if (skipSave.current) { skipSave.current = false; return; }
-    setSaveState("…");
+    let active = true;
+    let syncing = false;
+    let syncQueued = false;
+    let unsubscribeLive = null;
+    const refreshFromCloud = async () => {
+      if (!active || document.visibilityState === "hidden" || !cloudConfigured()) return;
+      if (syncing) {
+        syncQueued = true;
+        return;
+      }
+      syncing = true;
+      try {
+        if (!await currentUser()) return;
+        setSyncNote("синхронизация…");
+        const result = await Promise.race([
+          syncAll(),
+          new Promise((resolve) => setTimeout(() => resolve({ ok: false, reason: "timeout" }), 6000)),
+        ]);
+        if (!active) return;
+        if (result.ok && result.pulled > 0) {
+          const targetDate = dateRef.current;
+          const snapshot = await loadWorkspaceSnapshot(targetDate);
+          if (active && applyWorkspaceSnapshot(snapshot, targetDate)) {
+            setSyncNote(`обновлено ${result.pulled}`);
+            return;
+          }
+        }
+        setSyncNote(result.ok ? "синхронизировано" : "");
+      } catch {
+        if (active) setSyncNote("");
+      } finally {
+        syncing = false;
+        if (active && syncQueued) {
+          syncQueued = false;
+          queueMicrotask(refreshFromCloud);
+        }
+      }
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        connectLive();
+        refreshFromCloud();
+      }
+    };
+    const connectLive = async () => {
+      if (!active || unsubscribeLive) return;
+      const unsubscribe = await subscribeCloudChanges(refreshFromCloud);
+      if (!active) unsubscribe?.();
+      else unsubscribeLive = unsubscribe;
+    };
+    const resumeCloud = () => {
+      connectLive();
+      refreshFromCloud();
+    };
+    connectLive();
+    const timer = window.setInterval(refreshFromCloud, CLOUD_REFRESH_MS);
+    window.addEventListener("focus", resumeCloud);
+    window.addEventListener("online", resumeCloud);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      active = false;
+      unsubscribeLive?.();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", resumeCloud);
+      window.removeEventListener("online", resumeCloud);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [applyWorkspaceSnapshot]);
+
+  useEffect(() => {
+    if (!loaded || loadedDate !== date) return undefined;
+    if (skipSave.current) {
+      skipSave.current = false;
+      return undefined;
+    }
+    setSaveState("сохранение…");
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
         await saveDay(date, s);
         setSaveState("сохранено");
-        setTimeout(() => setSaveState(""), 1500);
-      } catch { setSaveState("ошибка сохранения"); }
-    }, 600);
+      } catch {
+        setSaveState("ошибка сохранения");
+      }
+    }, 450);
     return () => clearTimeout(saveTimer.current);
-  }, [s, loaded, date]);
+  }, [s, loaded, loadedDate, date]);
 
-  const up = useCallback((patch) => setS((prev) => ({ ...prev, ...(typeof patch === "function" ? patch(prev) : patch) })), []);
+  const up = useCallback((patch) => setS((previous) => ({
+    ...previous,
+    ...(typeof patch === "function" ? patch(previous) : patch),
+  })), []);
 
-  const upSettings = (patch) => {
-    const next = { ...settings, ...patch };
-    setSettings(next);
-    saveSettings(next);
-  };
-
-  const setDeals = (next) => {
+  const setDeals = useCallback((next) => {
     setDealsState(next);
     saveDeals(next);
+  }, []);
+
+  const upSettings = useCallback((patch) => {
+    setSettings((previous) => {
+      const next = { ...previous, ...patch };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
+  const updateHealthProfile = useCallback((patch) => {
+    setHealthProfile((previous) => {
+      const next = typeof patch === "function" ? patch(previous) : { ...previous, ...patch };
+      saveHealthProfile(next);
+      return next;
+    });
+  }, []);
+
+  const updateTrainingPlan = useCallback((patch) => {
+    setTrainingPlan((previous) => {
+      const next = typeof patch === "function" ? patch(previous) : { ...previous, ...patch };
+      saveTrainingPlan(next);
+      return next;
+    });
+  }, []);
+
+  const { pts, max } = dayScore(s);
+  const morning = morningProgress(s);
+  const dealsAttention = deals.filter((deal) => ["overdue", "today", "nostep"].includes(dealStatus(deal, now.date).kind)).length;
+  const navBadge = {
+    today: s.dayStarted ? pts : `${morning.done}/${morning.max}`,
+    deals: dealsAttention || "",
+    review: "",
+    more: daysSinceExport() >= 7 ? "!" : "",
   };
 
-  const num = personalDay(date);
-  const { pts, max } = dayScore(s);
-  const mp = morningProgress(s);
-  const backupStale = daysSinceExport() >= 7;
-  const dealsAttn = deals.filter((d) => ["overdue", "today", "nostep"].includes(dealStatus(d, now.date).kind)).length;
+  const navigate = (nextTab) => {
+    if (nextTab !== "more") setMoreInitialView("");
+    setTab(nextTab);
+  };
 
-  const tabs = [
-    ["today", "Сегодня", s.dayStarted ? `${pts}` : `${mp.done}/${mp.max}`, "◉"],
-    ["deals", "Сделки", dealsAttn ? `${dealsAttn}!` : null, "⬦"],
-    ["overview", "Обзор", null, "▤"],
-    ["more", "Ещё", backupStale ? "!" : null, "☰"],
-  ];
+  const openCloudSettings = () => {
+    setMoreInitialView("settings");
+    setTab("more");
+  };
+
+  const goHome = () => {
+    setTab("today");
+    selectDate(now.date);
+  };
 
   if (locked) return <LockScreen onUnlock={() => setLocked(false)} />;
-
-  if (!loaded) return <div style={{ background: C.bg, minHeight: "100vh", color: C.muted, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT.sans }}>Загрузка…</div>;
-
-  const arrowBtn = (label, onClick, aria) => (
-    <button onClick={onClick} aria-label={aria} style={{
-      background: "rgba(255,255,255,.02)", border: "1px solid var(--line-strong)", color: "var(--muted)",
-      borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 12, lineHeight: 1,
-    }}>{label}</button>
-  );
+  if (!loaded) return <div className="app-loading">Загрузка DALER OS…</div>;
 
   return (
     <>
-    <PrintSheet date={date} s={s} settings={settings} deals={deals} northStar={northStar} />
-    <div id="app-root" style={{ minHeight: "100vh" }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px 120px" }}>
-        {/* MASTHEAD */}
-        <Rule double />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 2px", gap: 14, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontFamily: FONT.serif, fontSize: 27, letterSpacing: ".04em" }}>
-              DALER <span style={{ color: C.gold }}>OS</span>
-            </div>
-            <div style={{ fontSize: 13, color: isToday ? C.muted : C.gold, marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              {arrowBtn("◀", () => setDate(addDays(date, -1)), "Предыдущий день")}
-              <span style={{ letterSpacing: ".01em" }}>{prettyDate(date)}{isToday && <span className="num" style={{ color: "var(--muted)" }}> · {now.time}</span>}</span>
-              {arrowBtn("▶", () => setDate(addDays(date, 1)), "Следующий день")}
-              {!isToday && (
-                <button onClick={() => setDate(now.date)} className="chip on" style={{ minHeight: 32, padding: "4px 14px", fontSize: 12 }}>
-                  АРХИВ — к сегодня
-                </button>
-              )}
-            </div>
-            <div className="kicker" style={{ marginTop: 8 }}>
-              личный день {num.pd} · {saveState || syncNote || "kuala lumpur"}
-            </div>
-          </div>
-          <div className={`ring${pts >= 8 ? " good" : ""}`} style={{ "--p": (pts / max) * 100 }} role="img" aria-label={`Баланс дня ${pts} из ${max}`}>
-            <span className="val">{pts}</span>
-            <span className="cap">ИЗ {max}</span>
-          </div>
-        </div>
-        <Rule double />
+      <PrintSheet date={date} s={s} settings={settings} deals={deals} northStar={northStar} />
+      <div id="app-root" className="app-shell">
+        <aside className="desktop-sidebar">
+          <button type="button" className="brand" onClick={goHome} aria-label="DALER OS — на главную" title="На главную">
+            <Compass size={20} strokeWidth={1.8} aria-hidden="true" />
+            <span className="brand-wordmark">DALER <b>OS</b></span>
+          </button>
+          <nav aria-label="Основная навигация">
+            {NAV.map(([key, label]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => navigate(key)}><span>{label}</span>{navBadge[key] !== "" && <b>{navBadge[key]}</b>}</button>)}
+          </nav>
+          <p>Спокойный разум.<br />Ясные решения.<br />Быстрое исполнение.</p>
+        </aside>
 
-        {northStar && (
-          <div className="northstar" style={{ marginTop: 14 }}>
-            <span className="kicker">north star</span>
-            <span style={{ fontSize: 14.5, fontFamily: FONT.serif }}>{northStar}</span>
-          </div>
-        )}
+        <main className={`workspace ${tab === "today" ? "workspace-wide" : ""}`}>
+          <header className="page-header">
+            <div>
+              <button type="button" className="mobile-brand" onClick={goHome} aria-label="DALER OS — на главную" title="На главную">
+                <Compass size={16} strokeWidth={1.8} aria-hidden="true" />
+                <span>DALER <b>OS</b></span>
+              </button>
+              <span className="kicker">{tab === "today" ? dayKicker(date, now.date) : "DALER OS"} · Kuala Lumpur</span>
+              <h1>{tab === "today" ? prettyDate(date) : PAGE_TITLES[tab]}</h1>
+              {tab !== "today" && <span className="header-date">{prettyDate(date)}</span>}
+            </div>
+            <div className="header-status">
+              <div className="theme-switch" role="group" aria-label="Цветовая тема">
+                <button type="button" className={settings.theme !== "light" ? "active" : ""} aria-pressed={settings.theme !== "light"} aria-label="Тёмная тема" title="Тёмная тема" onClick={() => upSettings({ theme: "dark" })}><Moon size={15} aria-hidden="true" /></button>
+                <button type="button" className={settings.theme === "light" ? "active" : ""} aria-pressed={settings.theme === "light"} aria-label="Светлая тема" title="Светлая тема" onClick={() => upSettings({ theme: "light" })}><Sun size={15} aria-hidden="true" /></button>
+              </div>
+              <span className={`sync-pill${cloudStatus === "online" ? "" : " local"}`}><i />{saveState || syncNote || (cloudStatus === "online" ? "облако подключено" : cloudStatus === "signed_out" ? "облако: нужен вход" : "только локально")}</span>
+              <button type="button" className="score-pill" aria-label={`Баланс дня ${pts} из ${max}`}><strong>{pts}</strong><span>/ {max}</span></button>
+            </div>
+          </header>
 
-        <div style={{ height: 18 }} />
+          {cloudStatus !== "online" && <button type="button" className="mobile-cloud-warning" onClick={openCloudSettings}>
+            <CloudOff size={16} aria-hidden="true" />
+            <span><strong>{cloudStatus === "signed_out" ? "Войдите для синхронизации" : "Синхронизация выключена"}</strong><small>Данные сейчас остаются только на этом устройстве</small></span>
+          </button>}
 
-        {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} today={now.date} date={date} time={now.time} northStar={northStar} goDeals={() => setTab("deals")} />}
-        {tab === "deals" && <Deals deals={deals} setDeals={setDeals} today={now.date} />}
-        {tab === "overview" && <Overview date={date} />}
-        {tab === "more" && <More s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} onLock={() => setLocked(true)} />}
+          {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} today={now.date} setDate={selectDate} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} />}
+          {tab === "deals" && <div className="standard-page"><Deals deals={deals} setDeals={setDeals} today={now.date} /></div>}
+          {tab === "review" && <div className="standard-page"><Overview date={date} setDate={selectDate} today={now.date} sub={reviewView} setSub={setReviewView} /></div>}
+          {tab === "more" && <div className="standard-page"><More initialView={moreInitialView} s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} onLock={() => setLocked(true)} /></div>}
+        </main>
+
+        <nav className="mobile-bottom-nav" aria-label="Основная навигация">
+          {NAV.map(([key, label]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => navigate(key)}><span>{label}</span>{navBadge[key] !== "" && <b>{navBadge[key]}</b>}</button>)}
+        </nav>
       </div>
-
-      {/* НИЖНЯЯ НАВИГАЦИЯ */}
-      <nav className="navbar" aria-label="Основная навигация">
-        <div className="inner">
-          {tabs.map(([k, label, b, glyph]) => (
-            <button key={k} onClick={() => setTab(k)} aria-label={label} className={tab === k ? "on" : ""}>
-              <span className="glyph" aria-hidden>{glyph}</span>
-              <span>{label}</span>
-              {b && <span className={`badge${String(b).includes("!") ? " alert" : ""}`}>{b}</span>}
-            </button>
-          ))}
-        </div>
-      </nav>
-    </div>
     </>
   );
 }

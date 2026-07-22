@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { STAGES } from "../constants";
+import { STAGES, primaryOutcomeText } from "../constants";
 import { prettyDate } from "../lib/date";
 import { personalDay, PD_MEANING } from "../lib/numerology";
 import { computeAstro } from "../lib/astro";
@@ -11,6 +11,7 @@ export default function PrintSheet({ date, s, settings, deals, northStar }) {
   const num = personalDay(date);
   const due = deals.filter((d) => d.nextDate && d.nextDate <= date && d.stage < 9);
   const box = "☐";
+  const outcome = primaryOutcomeText(s.primaryOutcome);
 
   const Row = ({ label, value }) => (
     <div style={{ marginBottom: 6 }}>
@@ -54,9 +55,9 @@ export default function PrintSheet({ date, s, settings, deals, northStar }) {
       </div>}
 
       <h2>Утро — до телефона</h2>
-      <Row label="Главный результат (факт)" value={s.primaryOutcome} />
-      {s.chairmanOnly && <div style={{ marginBottom: 6 }}><b>Chairman action — требуется лично.</b></div>}
-      <Row label="Чего не делать" value={(s.refusalChips || []).join(" · ") || s.refusal} />}
+      <Row label="Главный результат (факт)" value={outcome} />
+      {(s.primaryOutcome?.chairmanOnly || s.chairmanOnly) && <div style={{ marginBottom: 6 }}><b>Chairman action — требуется лично.</b></div>}
+      <Row label="Чего не делать" value={s.dailyProtocol?.compass?.noToday || (s.refusalChips || []).join(" · ") || s.refusal} />
 
       <h2>Расписание</h2>
       <div className="mono">
@@ -68,7 +69,8 @@ export default function PrintSheet({ date, s, settings, deals, northStar }) {
       <h2>Приоритеты</h2>
       <div>
         {box} Офис: каждая встреча заканчивается следующим шагом<br />
-        {box} Здоровье (утром): тренировка + добавки — бицепс {box} · грудь {box}<br />
+        {box} Утро: лекарственное окно и stack по профилю<br />
+        {box} Спорт: рекомендация по готовности<br />
         {box} Час Архитектора — артефакт: ______________________________<br />
         {box} Вечерняя разгрузка без экрана
       </div>
@@ -82,14 +84,6 @@ export default function PrintSheet({ date, s, settings, deals, northStar }) {
         </>
       )}
 
-      <h2>Дисциплина</h2>
-      <div>
-        {box} Не курить · {box} Не пить · {box} Законы логики 20 мин<br />
-        {box} Выход из зоны комфорта: ______________________________<br />
-        {box} Встреча в высоких кругах: ______________________________<br />
-        {box} Хобби: Overlanding / Golf range / Padel
-      </div>
-
       <h2>Астрослой · context, not command</h2>
       <div className="small">
         Луна в {a.moonSignLoc} · {a.phase.name} {a.illum}%{a.retro.length ? ` · ℞ ${a.retro.join(", ")}` : ""}<br />
@@ -100,9 +94,7 @@ export default function PrintSheet({ date, s, settings, deals, northStar }) {
 
       <h2>Вечер — заполнить рукой</h2>
       <div>
-        Победа 1: ____________________________________________<br />
-        Победа 2: ____________________________________________<br />
-        Победа 3: ____________________________________________<br />
+        Главная победа: ______________________________________<br />
         Результат дня создан: да {box} · нет {box} — причина: ______________________<br />
         Главное решение завтра: ______________________________
       </div>

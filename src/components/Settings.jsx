@@ -78,7 +78,7 @@ function CloudSettings() {
             Синхронизация между устройствами не подключена. Данные живут на этом устройстве.
           </div>
           {!showAdvanced ? (
-            <Btn onClick={() => setShowAdvanced(true)}>Настроить (Advanced)</Btn>
+            <Btn primary onClick={() => setShowAdvanced(true)}>Подключить синхронизацию</Btn>
           ) : (
             <>
               <div style={{ fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 1.6 }}>
@@ -119,7 +119,7 @@ function CloudSettings() {
             <Btn onClick={async () => { await signOut(); setUser(null); say("Вышел из аккаунта — данные остались на устройстве"); }}>Выйти</Btn>
           </div>
           <div style={{ fontSize: 12, color: C.muted, marginTop: 10 }}>
-            Каждое сохранение улетает в облако фоном; при запуске приложение сверяется и берёт более свежую версию каждой записи.
+            Каждое сохранение сразу отправляется в облако и появляется на других открытых устройствах; при запуске приложение дополнительно сверяет все записи.
             Войди этим же аккаунтом на втором устройстве — история подтянется.
           </div>
         </>
@@ -228,7 +228,7 @@ function LockSettings({ onLock }) {
 
 const TimeInput = ({ value, onChange, disabled }) => (
   <input type="time" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
-    style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: disabled ? C.muted : C.ivory, padding: "6px 10px", fontSize: 14, fontFamily: FONT.mono, colorScheme: "dark" }} />
+    style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: disabled ? C.muted : C.ivory, padding: "6px 10px", fontSize: 14, fontFamily: FONT.mono, colorScheme: "inherit" }} />
 );
 
 export default function Settings({ settings, upSettings, date, onLock }) {

@@ -7,20 +7,42 @@ import { get as idbGet, set as idbSet, keys as idbKeys } from "idb-keyval";
 const CFG_KEY = "daleros:cloud";
 const META_KEY = "daleros:kvmeta";
 const TABLE = "daleros_kv";
+const notifyCloudStatus = () => window.dispatchEvent(new Event("daleros-cloud-status"));
 
 // Какие ключи синхронизируем
 const syncable = (k) =>
-  typeof k === "string" && (k.startsWith("day:") || k.startsWith("week:") || k === "deals" || k === "settings");
+  typeof k === "string" && (
+    k.startsWith("day:") ||
+    k.startsWith("week:") ||
+    k === "deals" ||
+    k === "settings" ||
+    k === "healthProfile" ||
+    k === "trainingPlan"
+  );
 
 export function getConfig() {
   try { return JSON.parse(localStorage.getItem(CFG_KEY)) || null; } catch { return null; }
 }
 
 let client = null;
+let liveChannel = null;
+let liveChannelUserId = null;
+let liveChannelReady = null;
+const liveListeners = new Set();
+
+function closeLiveChannel() {
+  if (client && liveChannel) client.removeChannel(liveChannel);
+  liveChannel = null;
+  liveChannelUserId = null;
+  liveChannelReady = null;
+}
+
 export function setConfig(cfg) {
+  closeLiveChannel();
   if (cfg) localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   else localStorage.removeItem(CFG_KEY);
   client = null;
+  notifyCloudStatus();
 }
 
 export function getClient() {
@@ -53,6 +75,7 @@ export async function signUp(email, password) {
   if (!c) throw new Error("Облако не настроено");
   const { error } = await c.auth.signUp({ email, password });
   if (error) throw error;
+  notifyCloudStatus();
 }
 
 export async function signIn(email, password) {
@@ -60,10 +83,55 @@ export async function signIn(email, password) {
   if (!c) throw new Error("Облако не настроено");
   const { error } = await c.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  notifyCloudStatus();
 }
 
 export async function signOut() {
   await getClient()?.auth.signOut();
+  closeLiveChannel();
+  notifyCloudStatus();
+}
+
+async function ensureLiveChannel() {
+  const c = getClient();
+  if (!c) return null;
+  const { data } = await c.auth.getSession();
+  const userId = data.session?.user?.id;
+  if (!userId) return null;
+  if (liveChannel && liveChannelUserId === userId) {
+    await liveChannelReady;
+    return liveChannel;
+  }
+  closeLiveChannel();
+  liveChannelUserId = userId;
+  liveChannel = c.channel(`daleros-sync:${userId}`, { config: { broadcast: { self: false } } });
+  liveChannel.on("broadcast", { event: "changed" }, ({ payload }) => {
+    for (const listener of liveListeners) listener(payload || {});
+  });
+  liveChannelReady = new Promise((resolve) => {
+    const timeout = window.setTimeout(() => resolve(false), 3000);
+    liveChannel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        window.clearTimeout(timeout);
+        resolve(true);
+      } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+        window.clearTimeout(timeout);
+        resolve(false);
+      }
+    });
+  });
+  await liveChannelReady;
+  return liveChannel;
+}
+
+export async function subscribeCloudChanges(listener) {
+  liveListeners.add(listener);
+  const channel = await ensureLiveChannel();
+  if (!channel) {
+    liveListeners.delete(listener);
+    return null;
+  }
+  return () => liveListeners.delete(listener);
 }
 
 // Отправка одного ключа (fire-and-forget из store.js)
@@ -73,10 +141,13 @@ export async function pushKey(key, value) {
   const { data } = await c.auth.getSession();
   const session = data.session;
   if (!session) return;
-  await c.from(TABLE).upsert(
+  const { error } = await c.from(TABLE).upsert(
     { user_id: session.user.id, key, value, updated_at: new Date().toISOString() },
     { onConflict: "user_id,key" }
   );
+  if (error) throw error;
+  const channel = await ensureLiveChannel();
+  await channel?.send({ type: "broadcast", event: "changed", payload: { key } });
 }
 
 // Полная сверка: по каждому ключу побеждает более свежая версия
