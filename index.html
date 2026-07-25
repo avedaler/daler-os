@@ -31,6 +31,24 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.setTimeout(async () => {
+        const root = document.getElementById("root");
+        const recoveryKey = "daleros:pwa-recovery";
+        if (root?.childElementCount) {
+          sessionStorage.removeItem(recoveryKey);
+          return;
+        }
+        if (!navigator.onLine || sessionStorage.getItem(recoveryKey)) return;
+        sessionStorage.setItem(recoveryKey, "1");
+        const registrations = await navigator.serviceWorker?.getRegistrations?.() || [];
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+        if ("caches" in window) {
+          await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
+        }
+        location.replace(`${location.pathname}?recovered=${Date.now()}`);
+      }, 2500);
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
