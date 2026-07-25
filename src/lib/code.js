@@ -55,6 +55,7 @@ export function defaultCodeState() {
     activeLawSince: now.slice(0, 10),
     sessions: {},
     weeklyReviews: [],
+    monthlyReviews: [],
     constitution: {
       current: "Реальность не меняется от одних слов.\nМеняется человек.\nДругие решения создают другую жизнь.",
       versions: [{ id: "v1", createdAt: now, text: "Реальность не меняется от одних слов.\nМеняется человек.\nДругие решения создают другую жизнь." }],
@@ -82,6 +83,7 @@ export function migrateCodeState(raw) {
     triggers: mergeById(base.triggers, value.triggers),
     sessions: value.sessions && typeof value.sessions === "object" ? value.sessions : {},
     weeklyReviews: Array.isArray(value.weeklyReviews) ? value.weeklyReviews : [],
+    monthlyReviews: Array.isArray(value.monthlyReviews) ? value.monthlyReviews : [],
     constitution: {
       ...base.constitution,
       ...(value.constitution || {}),
@@ -113,6 +115,8 @@ export function codeSession(state, date) {
     identityStatementIds: state.identityStatements.filter((item) => item.active).slice(0, state.settings.statementCount).map((item) => item.id),
     mainMoveText: "",
     linkedTaskId: "",
+    mainMoveTime: "",
+    mainMoveMinutes: 60,
     expectedTriggerId: "pressure",
     chosenResponse: "",
     morningCompletedAt: null,
@@ -135,6 +139,7 @@ export function codeEventsForDate(state, date) {
   if (!session) return [];
   const events = [];
   if (session.morningCompletedAt) events.push({ id: "code-morning", label: "Утренний Кодекс", category: "Код", tone: "gold", detail: "Протокол завершён" });
+  if (session.mainMoveTime && session.mainMoveText) events.push({ id: "code-main-move-plan", label: `Главный ход · ${session.mainMoveTime}`, category: "Календарь", tone: "neutral", detail: `${session.mainMoveText} · ${session.mainMoveMinutes || 60} мин` });
   if (session.mainMoveCompletedAt) events.push({ id: "code-main-move", label: "Главный ход выполнен", category: "Код", tone: "green", detail: session.mainMoveText || "" });
   if (session.eveningCompletedAt) events.push({ id: "code-evening", label: "Вечерний разбор Кодекса", category: "Код", tone: "gold", detail: session.behavioralProof || "" });
   return events;

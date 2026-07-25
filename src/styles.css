@@ -309,7 +309,7 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
 .code-choice-list button { min-height: 66px; display: grid; gap: 4px; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--text); text-align: left; padding: 10px 12px; cursor: pointer; }
 .code-choice-list button span { color: var(--muted); font-size: 11px; }
 .code-choice-list button.selected { box-shadow: inset 3px 0 0 var(--gold); background: var(--accent-soft); }
-.code-dashboard-card { min-width: 0; display: grid; grid-template-columns: 1.25fr 1fr auto; gap: 14px; align-items: center; border: 1px solid var(--accent-border-strong); border-radius: 8px; background: var(--accent-subtle); padding: 13px 15px; }
+.code-dashboard-card { min-width: 0; display: grid; grid-template-columns: 1.25fr 1fr .8fr auto; gap: 14px; align-items: center; border: 1px solid var(--accent-border-strong); border-radius: 8px; background: var(--accent-subtle); padding: 13px 15px; }
 .code-dashboard-card > div { min-width: 0; display: grid; gap: 5px; }
 .code-dashboard-card strong { font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
 .code-dashboard-card p { margin: 0; color: var(--muted); font-size: 11px; }
@@ -350,6 +350,8 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
 .code-evidence-list span { color: var(--muted); font: 500 9px/1.4 var(--mono); }
 .code-evidence-list strong { font-size: 12px; }
 .code-evidence-list p { grid-column: 2; margin: 0; color: var(--muted); font-size: 11px; }
+.code-patterns { display: grid; gap: 7px; border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+.code-patterns p { margin: 0; font-size: 12px; line-height: 1.5; }
 .command-work-tools { grid-template-columns: minmax(180px, 1fr) auto; align-items: start; gap: 8px; }
 .command-artifacts { position: relative; }
 .command-artifacts summary { min-height: 44px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); padding: 0 11px; cursor: pointer; list-style: none; }
