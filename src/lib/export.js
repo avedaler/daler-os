@@ -4,7 +4,7 @@ import { prettyDate, isoWeek, MO_NOM } from "./date";
 import { dayScore } from "./score";
 import { personalDay } from "./numerology";
 import { computeAstro, astroToText } from "./astro";
-import { migrateDay } from "../constants";
+import { migrateDay, primaryOutcomeText } from "../constants";
 
 export async function exportMonth(ym) {
   // ym: "YYYY-MM"
@@ -23,15 +23,17 @@ export async function exportMonth(ym) {
     lines.push(`## ${prettyDate(iso)} — ${pts}/${max}`);
     lines.push(`Личный день ${num.pd} · месяц ${num.pm} · год ${num.py}`);
     lines.push("");
-    const done = s.outcomeStatus === "done" || s.proofDone;
-    if (s.primaryOutcome) lines.push(`**Главный результат:** ${s.primaryOutcome}${done ? " ✓" : ` (${s.outcomeStatus || "не закрыт"}${s.missAction ? ` → ${s.missAction}` : ""})`}`);
-    if (s.chairmanOnly) lines.push(`**Chairman action** — требовалось личное участие`);
-    if (s.stateCat) lines.push(`**Состояние:** ${s.stateCat}`);
+    const outcome = primaryOutcomeText(s.primaryOutcome);
+    const done = s.primaryOutcome.status === "done" || s.proofDone;
+    const evening = s.dailyProtocol.evening;
+    if (outcome) lines.push(`**Главный результат:** ${outcome}${done ? " ✓" : ` (${s.primaryOutcome.status || "не закрыт"}${evening.resolution ? ` → ${evening.resolution}` : ""})`}`);
+    if (s.primaryOutcome.chairmanOnly) lines.push(`**Chairman action** — требовалось личное участие`);
+    if (s.dailyProtocol.compass.stateBand) lines.push(`**Состояние:** ${s.dailyProtocol.compass.stateBand}`);
     if ((s.refusalChips || []).length) lines.push(`**Отказ дня:** ${s.refusalChips.join(" · ")}`);
     if (s.artifactType) lines.push(`**Артефакт Часа Архитектора:** ${s.artifactType}${s.architectResult ? ` — ${s.architectResult}` : ""}`);
     if (s.body) lines.push(`**Тело:** ${s.body}`);
     if (s.family) lines.push(`**Семья:** ${s.family}`);
-    const wins = s.wins.filter((w) => w.trim());
+    const wins = [evening.mainWin, ...s.wins].filter((w, i, all) => typeof w === "string" && w.trim() && all.indexOf(w) === i);
     if (wins.length) {
       lines.push("", "**Победы:**");
       wins.forEach((w) => lines.push(`- ${w}`));

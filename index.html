@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0a0c10" />
+    <meta name="theme-color" content="#101112" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="DALER OS" />
@@ -16,12 +16,39 @@
       rel="stylesheet"
     />
     <title>DALER OS</title>
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem("daler-os-theme") === "light" ? "light" : "dark";
+        document.querySelector('meta[name="theme-color"]').content = document.documentElement.dataset.theme === "light" ? "#f2f4f2" : "#101112";
+      } catch {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
     <style>
-      html, body { margin: 0; background: #0a0c10; }
+      html, body { margin: 0; background: #101112; }
+      html[data-theme="light"], html[data-theme="light"] body { background: #f2f4f2; }
     </style>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.setTimeout(async () => {
+        const root = document.getElementById("root");
+        const recoveryKey = "daleros:pwa-recovery";
+        if (root?.childElementCount) {
+          sessionStorage.removeItem(recoveryKey);
+          return;
+        }
+        if (!navigator.onLine || sessionStorage.getItem(recoveryKey)) return;
+        sessionStorage.setItem(recoveryKey, "1");
+        const registrations = await navigator.serviceWorker?.getRegistrations?.() || [];
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+        if ("caches" in window) {
+          await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
+        }
+        location.replace(`${location.pathname}?recovered=${Date.now()}`);
+      }, 2500);
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

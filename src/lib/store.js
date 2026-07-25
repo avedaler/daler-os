@@ -43,6 +43,22 @@ export async function saveSettings(s) {
   await persist("settings", s);
 }
 
+export async function loadHealthProfile() {
+  return (await get("healthProfile")) || null;
+}
+
+export async function saveHealthProfile(profile) {
+  await persist("healthProfile", profile);
+}
+
+export async function loadTrainingPlan() {
+  return (await get("trainingPlan")) || null;
+}
+
+export async function saveTrainingPlan(plan) {
+  await persist("trainingPlan", plan);
+}
+
 export async function loadDeals() {
   return (await get("deals")) || [];
 }
@@ -51,10 +67,18 @@ export async function saveDeals(deals) {
   await persist("deals", deals);
 }
 
+export async function loadCode() {
+  return (await get("code")) || null;
+}
+
+export async function saveCode(code) {
+  await persist("code", code);
+}
+
 // Полный бэкап/восстановление: все ключи IndexedDB одним JSON-объектом
 export async function exportAllData() {
   const ks = await keys();
-  const out = { _app: "daler-os", _version: 1 };
+  const out = { _app: "daler-os", _version: 3, _exportedAt: new Date().toISOString() };
   for (const k of ks) {
     if (typeof k === "string") out[k] = await get(k);
   }

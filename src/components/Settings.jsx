@@ -25,7 +25,7 @@ function CloudSettings() {
   const connect = () => {
     const u = url.trim().replace(/\/$/, "");
     if (!/^https:\/\/.+\.supabase\.co$/.test(u)) return say("URL должен быть вида https://xxxx.supabase.co");
-    if (anonKey.trim().length < 30) return say("Похоже, это не anon-ключ");
+    if (anonKey.trim().length < 30) return say("Похоже, это не публичный ключ");
     setConfig({ url: u, anonKey: anonKey.trim() });
     setCfg(getConfig());
     say("Облако подключено — теперь войди или создай аккаунт");
@@ -78,12 +78,12 @@ function CloudSettings() {
             Синхронизация между устройствами не подключена. Данные живут на этом устройстве.
           </div>
           {!showAdvanced ? (
-            <Btn onClick={() => setShowAdvanced(true)}>Настроить (Advanced)</Btn>
+            <Btn primary onClick={() => setShowAdvanced(true)}>Подключить синхронизацию</Btn>
           ) : (
             <>
               <div style={{ fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 1.6 }}>
                 Один раз: на supabase.com создай проект (регион Singapore) → SQL Editor → выполни SQL (кнопка ниже) →
-                Settings → API → скопируй Project URL и anon public key сюда.
+                Settings → API Keys → скопируй Project URL и publishable key сюда.
               </div>
               <Btn onClick={() => setShowSql(!showSql)}>{showSql ? "Скрыть SQL" : "Показать SQL для таблицы"}</Btn>
               {showSql && (
@@ -91,7 +91,7 @@ function CloudSettings() {
               )}
               <div style={{ marginTop: 12 }}>
                 {field("Project URL", url, setUrl, "text", "https://xxxx.supabase.co")}
-                {field("anon public key", anonKey, setAnonKey, "text", "eyJhbGciOi…")}
+                {field("Публичный ключ", anonKey, setAnonKey, "text", "sb_publishable_…")}
                 <Btn primary onClick={connect}>Подключить облако</Btn>
               </div>
             </>
@@ -119,7 +119,7 @@ function CloudSettings() {
             <Btn onClick={async () => { await signOut(); setUser(null); say("Вышел из аккаунта — данные остались на устройстве"); }}>Выйти</Btn>
           </div>
           <div style={{ fontSize: 12, color: C.muted, marginTop: 10 }}>
-            Каждое сохранение улетает в облако фоном; при запуске приложение сверяется и берёт более свежую версию каждой записи.
+            Каждое сохранение сразу отправляется в облако и появляется на других открытых устройствах; при запуске приложение дополнительно сверяет все записи.
             Войди этим же аккаунтом на втором устройстве — история подтянется.
           </div>
         </>
@@ -220,7 +220,7 @@ function LockSettings({ onLock }) {
       <div style={{ minHeight: 20, fontSize: 13, color: C.gold, fontFamily: FONT.mono, marginTop: 8 }}>{msg}</div>
       <div style={{ fontSize: 12, color: C.muted }}>
         Забытый PIN не восстанавливается — только очистка данных сайта (история удалится). Держи свежий JSON-бэкап.
-        Облачный логин с синхронизацией появится после подключения бэкенда.
+        Облачный вход ниже синхронизирует данные между твоими устройствами.
       </div>
     </Section>
   );
@@ -228,7 +228,7 @@ function LockSettings({ onLock }) {
 
 const TimeInput = ({ value, onChange, disabled }) => (
   <input type="time" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
-    style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: disabled ? C.muted : C.ivory, padding: "6px 10px", fontSize: 14, fontFamily: FONT.mono, colorScheme: "dark" }} />
+    style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, color: disabled ? C.muted : C.ivory, padding: "6px 10px", fontSize: 14, fontFamily: FONT.mono, colorScheme: "inherit" }} />
 );
 
 export default function Settings({ settings, upSettings, date, onLock }) {
@@ -277,9 +277,9 @@ export default function Settings({ settings, upSettings, date, onLock }) {
 
   return (
     <>
-      <LockSettings onLock={onLock} />
-
       <CloudSettings />
+
+      <LockSettings onLock={onLock} />
 
       <Section kicker="критично" title="Бэкап данных">
         {staleDays >= 7 && (
@@ -334,7 +334,7 @@ export default function Settings({ settings, upSettings, date, onLock }) {
       <Section kicker="данные" title="Хранилище">
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
           Все записи хранятся локально в IndexedDB этого устройства (офлайн-first). Одна запись на дату (KL).
-          Синхронизация между устройствами появится с облачным хранилищем — до тех пор регулярный JSON-бэкап обязателен.
+          После входа данные синхронизируются между устройствами. Регулярный JSON-бэкап остаётся дополнительной страховкой.
         </div>
       </Section>
     </>

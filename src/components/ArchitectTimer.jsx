@@ -64,7 +64,7 @@ export default function ArchitectTimer({ onComplete }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", flexWrap: "wrap" }}>
       <div style={{ fontFamily: FONT.mono, fontSize: 34, color: running ? C.gold : C.ivory, letterSpacing: ".04em" }}>{mm}:{ss}</div>
-      <button onClick={running ? pause : start} style={{ background: running ? "transparent" : "rgba(200,164,92,.12)", border: `1px solid ${C.gold}`, color: C.gold, borderRadius: 4, padding: "7px 16px", cursor: "pointer", fontSize: 13, fontFamily: FONT.sans }}>
+      <button onClick={running ? pause : start} style={{ background: running ? "transparent" : "var(--accent-medium)", border: `1px solid ${C.gold}`, color: C.gold, borderRadius: 4, padding: "7px 16px", cursor: "pointer", fontSize: 13, fontFamily: FONT.sans }}>
         {running ? "Пауза" : left < FULL && left > 0 ? "Продолжить" : "Начать час"}
       </button>
       <button onClick={reset} style={{ background: "transparent", border: `1px solid ${C.line}`, color: C.muted, borderRadius: 4, padding: "7px 12px", cursor: "pointer", fontSize: 13 }}>Сброс</button>
