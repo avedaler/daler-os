@@ -220,7 +220,7 @@ function LockSettings({ onLock }) {
       <div style={{ minHeight: 20, fontSize: 13, color: C.gold, fontFamily: FONT.mono, marginTop: 8 }}>{msg}</div>
       <div style={{ fontSize: 12, color: C.muted }}>
         Забытый PIN не восстанавливается — только очистка данных сайта (история удалится). Держи свежий JSON-бэкап.
-        Облачный логин с синхронизацией появится после подключения бэкенда.
+        Облачный вход ниже синхронизирует данные между твоими устройствами.
       </div>
     </Section>
   );
@@ -334,7 +334,7 @@ export default function Settings({ settings, upSettings, date, onLock }) {
       <Section kicker="данные" title="Хранилище">
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
           Все записи хранятся локально в IndexedDB этого устройства (офлайн-first). Одна запись на дату (KL).
-          Синхронизация между устройствами появится с облачным хранилищем — до тех пор регулярный JSON-бэкап обязателен.
+          После входа данные синхронизируются между устройствами. Регулярный JSON-бэкап остаётся дополнительной страховкой.
         </div>
       </Section>
     </>
