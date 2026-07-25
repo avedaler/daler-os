@@ -1,13 +1,18 @@
 // Облако: Supabase — email-вход и синхронизация IndexedDB между устройствами.
-// Конфиг (URL проекта + anon-ключ) вводится в настройках и хранится локально;
-// anon-ключ публичен по дизайну, данные защищены row-level security.
+// Конфиг берётся из окружения production или локальной ручной настройки;
+// публичный ключ безопасен для браузера, данные защищены row-level security.
 import { createClient } from "@supabase/supabase-js";
 import { get as idbGet, set as idbSet, keys as idbKeys } from "idb-keyval";
 
 const CFG_KEY = "daleros:cloud";
+const DISABLED = "__disabled__";
 const META_KEY = "daleros:kvmeta";
 const TABLE = "daleros_kv";
 const notifyCloudStatus = () => window.dispatchEvent(new Event("daleros-cloud-status"));
+const bundledConfig = {
+  url: import.meta.env.VITE_SUPABASE_URL || "",
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+};
 
 // Какие ключи синхронизируем
 const syncable = (k) =>
@@ -22,7 +27,12 @@ const syncable = (k) =>
   );
 
 export function getConfig() {
-  try { return JSON.parse(localStorage.getItem(CFG_KEY)) || null; } catch { return null; }
+  try {
+    const saved = localStorage.getItem(CFG_KEY);
+    if (saved === DISABLED) return null;
+    if (saved) return JSON.parse(saved) || null;
+  } catch { /* use bundled production config */ }
+  return bundledConfig.url && bundledConfig.anonKey ? bundledConfig : null;
 }
 
 let client = null;
@@ -41,7 +51,7 @@ function closeLiveChannel() {
 export function setConfig(cfg) {
   closeLiveChannel();
   if (cfg) localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-  else localStorage.removeItem(CFG_KEY);
+  else localStorage.setItem(CFG_KEY, DISABLED);
   client = null;
   notifyCloudStatus();
 }

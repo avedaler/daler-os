@@ -25,7 +25,7 @@ function CloudSettings() {
   const connect = () => {
     const u = url.trim().replace(/\/$/, "");
     if (!/^https:\/\/.+\.supabase\.co$/.test(u)) return say("URL должен быть вида https://xxxx.supabase.co");
-    if (anonKey.trim().length < 30) return say("Похоже, это не anon-ключ");
+    if (anonKey.trim().length < 30) return say("Похоже, это не публичный ключ");
     setConfig({ url: u, anonKey: anonKey.trim() });
     setCfg(getConfig());
     say("Облако подключено — теперь войди или создай аккаунт");
@@ -83,7 +83,7 @@ function CloudSettings() {
             <>
               <div style={{ fontSize: 13, color: C.muted, marginBottom: 12, lineHeight: 1.6 }}>
                 Один раз: на supabase.com создай проект (регион Singapore) → SQL Editor → выполни SQL (кнопка ниже) →
-                Settings → API → скопируй Project URL и anon public key сюда.
+                Settings → API Keys → скопируй Project URL и publishable key сюда.
               </div>
               <Btn onClick={() => setShowSql(!showSql)}>{showSql ? "Скрыть SQL" : "Показать SQL для таблицы"}</Btn>
               {showSql && (
@@ -91,7 +91,7 @@ function CloudSettings() {
               )}
               <div style={{ marginTop: 12 }}>
                 {field("Project URL", url, setUrl, "text", "https://xxxx.supabase.co")}
-                {field("anon public key", anonKey, setAnonKey, "text", "eyJhbGciOi…")}
+                {field("Публичный ключ", anonKey, setAnonKey, "text", "sb_publishable_…")}
                 <Btn primary onClick={connect}>Подключить облако</Btn>
               </div>
             </>
