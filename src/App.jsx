@@ -425,7 +425,9 @@ export default function App() {
                 <button type="button" className={settings.theme !== "light" ? "active" : ""} aria-pressed={settings.theme !== "light"} aria-label="Тёмная тема" title="Тёмная тема" onClick={() => upSettings({ theme: "dark" })}><Moon size={15} aria-hidden="true" /></button>
                 <button type="button" className={settings.theme === "light" ? "active" : ""} aria-pressed={settings.theme === "light"} aria-label="Светлая тема" title="Светлая тема" onClick={() => upSettings({ theme: "light" })}><Sun size={15} aria-hidden="true" /></button>
               </div>
-              <span className={`sync-pill${cloudStatus === "online" ? "" : " local"}`}><i />{saveState || syncNote || (cloudStatus === "online" ? "облако подключено" : cloudStatus === "signed_out" ? "облако: нужен вход" : "только локально")}</span>
+              <button type="button" className={`sync-pill${cloudStatus === "online" ? "" : " local"}`} onClick={openCloudSettings}>
+                <i />{saveState || syncNote || (cloudStatus === "online" ? "облако подключено" : cloudStatus === "signed_out" ? "облако: нужен вход" : "только локально")}
+              </button>
               <button type="button" className="score-pill" aria-label={`Баланс дня ${pts} из ${max}`}><strong>{pts}</strong><span>/ {max}</span></button>
             </div>
           </header>

@@ -277,9 +277,9 @@ export default function Settings({ settings, upSettings, date, onLock }) {
 
   return (
     <>
-      <LockSettings onLock={onLock} />
-
       <CloudSettings />
+
+      <LockSettings onLock={onLock} />
 
       <Section kicker="критично" title="Бэкап данных">
         {staleDays >= 7 && (
