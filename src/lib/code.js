@@ -1,34 +1,34 @@
 export const CODE_CATEGORIES = ["Calm", "Focus", "Execution", "Wealth", "Leadership", "Health", "Time"];
 
-const law = (id, category, ru, en, practice) => ({ id, category, ru, en, practice, active: true, favorite: false });
+const law = (id, category, ru, practice) => ({ id, category, ru, practice, active: true, favorite: false });
 
 export const CODE_LAWS = [
-  law("calm", "Calm", "Спокойствие — моё конкурентное преимущество.", "Calm is my competitive advantage.", "Пауза перед ответом под давлением."),
-  law("causes", "Execution", "Я не охочусь за следствием. Я создаю причины.", "I do not chase outcomes. I create causes.", "Создай одно действие, которое повышает вероятность результата."),
-  law("compound", "Time", "Каждый правильно прожитый день становится инвестицией.", "Every well-lived day becomes an investment.", "Сделай один повторяемый шаг."),
-  law("attention", "Focus", "Моё внимание — мой самый дорогой актив.", "My attention is my most valuable asset.", "Закрой реактивные каналы на один фокус-блок."),
-  law("responsibility", "Leadership", "Я принимаю полную ответственность. Это освобождает меня.", "I take full responsibility. It sets me free.", "Назови факт, решение и следующий шаг."),
-  law("wealth", "Wealth", "Я ежедневно увеличиваю способность создавать ценность.", "Every day I increase my capacity to create value.", "Создай измеримое экономическое доказательство."),
-  law("influence", "Leadership", "Мой пример говорит громче моих слов.", "My example speaks louder than my words.", "Сначала покажи стандарт собственным поведением."),
-  law("execution", "Execution", "Я превращаю идеи в системы, а системы — в ценность.", "I turn ideas into systems and systems into value.", "Закрой старое обязательство до запуска нового."),
-  law("time", "Time", "Сегодня — единственный день, который я действительно могу использовать.", "Today is the only day I can truly use.", "Выбери одно действие, которое оправдает этот день."),
-  law("discipline", "Health", "Дисциплина важнее настроения.", "Discipline over mood.", "Выполни минимальную версию обещанного."),
+  law("calm", "Calm", "Спокойствие — моё конкурентное преимущество.", "Пауза перед ответом под давлением."),
+  law("causes", "Execution", "Я не охочусь за следствием. Я создаю причины.", "Создай одно действие, которое повышает вероятность результата."),
+  law("compound", "Time", "Каждый правильно прожитый день становится инвестицией.", "Сделай один повторяемый шаг."),
+  law("attention", "Focus", "Моё внимание — мой самый дорогой актив.", "Закрой реактивные каналы на один фокус-блок."),
+  law("responsibility", "Leadership", "Я принимаю полную ответственность. Это освобождает меня.", "Назови факт, решение и следующий шаг."),
+  law("wealth", "Wealth", "Я ежедневно увеличиваю способность создавать ценность.", "Создай измеримое экономическое доказательство."),
+  law("influence", "Leadership", "Мой пример говорит громче моих слов.", "Сначала покажи стандарт собственным поведением."),
+  law("execution", "Execution", "Я превращаю идеи в системы, а системы — в ценность.", "Закрой старое обязательство до запуска нового."),
+  law("time", "Time", "Сегодня — единственный день, который я действительно могу использовать.", "Выбери одно действие, которое оправдает этот день."),
+  law("discipline", "Health", "Дисциплина важнее настроения.", "Выполни минимальную версию обещанного."),
 ];
 
 export const IDENTITY_STATEMENTS = [
-  { id: "calm", ru: "Я действую спокойно.", en: "I act calmly.", active: true },
-  { id: "systems", ru: "Я строю системы.", en: "I build systems.", active: true },
-  { id: "value", ru: "Я создаю ценность.", en: "I create value.", active: true },
-  { id: "attention", ru: "Моё внимание принадлежит мне.", en: "My attention belongs to me.", active: true },
-  { id: "execute", ru: "Сегодня я двигаю главный проект.", en: "Today I move the main project.", active: true },
-  { id: "energy", ru: "Я — энергичный человек, который берёт максимум от дня и ценит его.", en: "I am energetic, I use the day fully, and I value it.", active: true },
+  { id: "calm", ru: "Я действую спокойно.", active: true },
+  { id: "systems", ru: "Я строю системы.", active: true },
+  { id: "value", ru: "Я создаю ценность.", active: true },
+  { id: "attention", ru: "Моё внимание принадлежит мне.", active: true },
+  { id: "execute", ru: "Сегодня я двигаю главный проект.", active: true },
+  { id: "energy", ru: "Я — энергичный человек, который берёт максимум от дня и ценит его.", active: true },
 ];
 
 export const CODE_TRIGGERS = [
-  { id: "pressure", labelRu: "Давление", labelEn: "Pressure", responseRu: "Пауза. Факты. Решение.", responseEn: "Pause. Facts. Decision.", active: true },
-  { id: "anxiety", labelRu: "Тревога", labelEn: "Anxiety", responseRu: "Спокойно. Наблюдай. Решай. Исполняй.", responseEn: "Calm. Observe. Decide. Execute.", active: true },
-  { id: "distraction", labelRu: "Отвлечение", labelEn: "Distraction", responseRu: "Верни внимание к Главному ходу.", responseEn: "Return attention to the Main Move.", active: true },
-  { id: "new-idea", labelRu: "Новая идея", labelEn: "New idea", responseRu: "Запиши. Не запускай. Закрой текущее.", responseEn: "Capture it. Do not launch it. Close the current commitment.", active: true },
+  { id: "pressure", labelRu: "Давление", responseRu: "Пауза. Факты. Решение.", active: true },
+  { id: "anxiety", labelRu: "Тревога", responseRu: "Спокойно. Наблюдай. Решай. Исполняй.", active: true },
+  { id: "distraction", labelRu: "Отвлечение", responseRu: "Верни внимание к Главному ходу.", active: true },
+  { id: "new-idea", labelRu: "Новая идея", responseRu: "Запиши. Не запускай. Закрой текущее.", active: true },
 ];
 
 export function defaultCodeState() {
@@ -75,7 +75,7 @@ export function migrateCodeState(raw) {
     ...base,
     ...value,
     schemaVersion: 1,
-    settings: { ...base.settings, ...(value.settings || {}) },
+    settings: { ...base.settings, ...(value.settings || {}), languageMode: "ru" },
     profile: { ...base.profile, ...(value.profile || {}) },
     laws: mergeById(base.laws, value.laws),
     identityStatements: mergeById(base.identityStatements, value.identityStatements),
@@ -125,13 +125,9 @@ export function codeSession(state, date) {
   };
 }
 
-export function displayCodeText(item, mode) {
+export function displayCodeText(item) {
   if (!item) return "";
-  if (mode === "ru") return item.ru || item.labelRu || item.responseRu || "";
-  if (mode === "en") return item.en || item.labelEn || item.responseEn || "";
-  const ru = item.ru || item.labelRu || item.responseRu || "";
-  const en = item.en || item.labelEn || item.responseEn || "";
-  return [ru, en].filter(Boolean).join(" / ");
+  return item.ru || item.labelRu || item.responseRu || "";
 }
 
 export function codeEventsForDate(state, date) {

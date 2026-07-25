@@ -5,7 +5,6 @@ import { CODE_CATEGORIES, codeSession, displayCodeText } from "../lib/code";
 import { downloadFile } from "../lib/ics";
 
 const TRAITS = ["Спокойный", "Дисциплинированный", "Решительный", "Терпеливый", "Стратегический", "Надёжный", "Физически сильный", "Честный с собой", "Сфокусированный", "Последовательный"];
-const LANGUAGES = [{ label: "Русский", value: "ru" }, { label: "Английский", value: "en" }, { label: "Оба языка", value: "bilingual" }];
 const CATEGORY_LABELS = { Calm: "Спокойствие", Focus: "Фокус", Execution: "Исполнение", Wealth: "Богатство", Leadership: "Лидерство", Health: "Здоровье", Time: "Время" };
 const SCORE_LABELS = [
   ["energyScore", "Энергия"],
@@ -53,11 +52,11 @@ function CodeOnboarding({ code, updateCode, date }) {
       <Btn primary onClick={() => setStep(2)}>Продолжить</Btn>
     </Section>}
     {step === 2 && <Section kicker="Закон" title="Выбери первый закон">
-      <div className="code-choice-list">{code.laws.slice(0, 6).map((item) => <button type="button" className={lawId === item.id ? "selected" : ""} onClick={() => setLawId(item.id)} key={item.id}><strong>{item.ru}</strong><span>{item.en}</span></button>)}</div>
+      <div className="code-choice-list">{code.laws.slice(0, 6).map((item) => <button type="button" className={lawId === item.id ? "selected" : ""} onClick={() => setLawId(item.id)} key={item.id}><strong>{item.ru}</strong></button>)}</div>
       <Btn primary onClick={() => setStep(3)}>Продолжить</Btn>
     </Section>}
     {step === 3 && <Section kicker="Триггер" title="Выбери первую реакцию">
-      <div className="code-choice-list">{code.triggers.map((item) => <button type="button" className={triggerId === item.id ? "selected" : ""} onClick={() => setTriggerId(item.id)} key={item.id}><strong>{item.responseRu}</strong><span>{item.responseEn}</span></button>)}</div>
+      <div className="code-choice-list">{code.triggers.map((item) => <button type="button" className={triggerId === item.id ? "selected" : ""} onClick={() => setTriggerId(item.id)} key={item.id}><strong>{item.responseRu}</strong></button>)}</div>
       <Btn primary onClick={() => setStep(4)}>Продолжить</Btn>
     </Section>}
     {step === 4 && <Section kicker="Длительность" title="Длительность ежедневного протокола">
@@ -74,7 +73,6 @@ function CodeOnboarding({ code, updateCode, date }) {
 function Protocol({ code, updateCode, date, tasks = [], updateTask }) {
   const session = codeSession(code, date);
   const law = currentLaw(code, session);
-  const mode = code.settings.languageMode;
   const trigger = code.triggers.find((item) => item.id === session.expectedTriggerId) || code.triggers[0];
   const patch = (values) => updateCode({ ...code, sessions: { ...code.sessions, [date]: { ...session, ...values } } });
   const finishMorning = () => patch({ morningCompletedAt: new Date().toISOString(), chosenResponse: session.chosenResponse || trigger?.responseRu || "" });
@@ -87,16 +85,16 @@ function Protocol({ code, updateCode, date, tasks = [], updateTask }) {
     if (session.linkedTaskId) updateTask?.(session.linkedTaskId, { done: true });
   };
   return <div className="code-protocol">
-    <Section kicker="Закон недели" title={displayCodeText(law, mode)}>
+    <Section kicker="Закон недели" title={displayCodeText(law)}>
       <p className="quiet-copy">{law.practice}</p>
       <Btn onClick={() => updateCode({ ...code, activeLawSince: date })}>Продлить ещё на неделю</Btn>
       <div className="code-score-grid">{SCORE_LABELS.map(([key, label]) => <label key={key}><span>{label}</span><input type="range" min="1" max="5" value={session[key]} onChange={(event) => patch({ [key]: Number(event.target.value) })} /><strong>{session[key]}</strong></label>)}</div>
     </Section>
     <Section kicker={`${code.settings.duration} минуты`} title="Утренний протокол">
-      <div className="code-statements">{code.identityStatements.filter((item) => session.identityStatementIds.includes(item.id)).map((item) => <p key={item.id}>{displayCodeText(item, mode)}</p>)}</div>
+      <div className="code-statements">{code.identityStatements.filter((item) => session.identityStatementIds.includes(item.id)).map((item) => <p key={item.id}>{displayCodeText(item)}</p>)}</div>
       <Field label="Главный ход" value={session.mainMoveText} onChange={(mainMoveText) => patch({ mainMoveText })} placeholder="Одно действие, которое создаёт доказательство" />
       {tasks.length > 0 && <label className="field"><span className="flabel">Связать с задачей</span><select className="input" value={session.linkedTaskId} onChange={(event) => linkTask(event.target.value)}><option value="">Без связи</option>{tasks.map((task) => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label>}
-      <label className="field"><span className="flabel">Ожидаемый триггер</span><select className="input" value={session.expectedTriggerId} onChange={(event) => patch({ expectedTriggerId: event.target.value })}>{code.triggers.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{displayCodeText(item, mode)}</option>)}</select></label>
+      <label className="field"><span className="flabel">Ожидаемый триггер</span><select className="input" value={session.expectedTriggerId} onChange={(event) => patch({ expectedTriggerId: event.target.value })}>{code.triggers.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{displayCodeText(item)}</option>)}</select></label>
       <Field label="Выбранная реакция" value={session.chosenResponse} onChange={(chosenResponse) => patch({ chosenResponse })} placeholder={trigger?.responseRu} />
       <div className="button-pair"><Btn primary disabled={Boolean(session.morningCompletedAt)} onClick={finishMorning}>{session.morningCompletedAt ? "Утро завершено" : "Завершить утро"}</Btn><Btn disabled={!session.mainMoveText || Boolean(session.mainMoveCompletedAt)} onClick={finishMove}>{session.mainMoveCompletedAt ? "Главный ход выполнен" : "Главный ход выполнен"}</Btn></div>
     </Section>
@@ -109,7 +107,7 @@ function Protocol({ code, updateCode, date, tasks = [], updateTask }) {
   </div>;
 }
 
-function EditableLibrary({ title, kicker, items, updateItems, kind, mode, activeId, onActivate }) {
+function EditableLibrary({ title, kicker, items, updateItems, kind, activeId, onActivate }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const filtered = items.filter((item) => {
@@ -118,16 +116,16 @@ function EditableLibrary({ title, kicker, items, updateItems, kind, mode, active
   });
   const patch = (id, values) => updateItems(items.map((item) => item.id === id ? { ...item, ...values } : item));
   const add = () => updateItems([...items, kind === "law"
-    ? { id: `law-${Date.now()}`, category: "Execution", ru: "Новый закон", en: "New law", practice: "", active: true, favorite: false }
+    ? { id: `law-${Date.now()}`, category: "Execution", ru: "Новый закон", practice: "", active: true, favorite: false }
     : kind === "identity"
-      ? { id: `identity-${Date.now()}`, ru: "Новое утверждение", en: "New statement", active: true }
-      : { id: `trigger-${Date.now()}`, labelRu: "Новый триггер", labelEn: "New trigger", responseRu: "Пауза. Решение.", responseEn: "Pause. Decision.", active: true }]);
+      ? { id: `identity-${Date.now()}`, ru: "Новое утверждение", active: true }
+      : { id: `trigger-${Date.now()}`, labelRu: "Новый триггер", responseRu: "Пауза. Решение.", active: true }]);
   return <Section kicker={kicker} title={title} action={<Btn onClick={add}><Plus size={15} />Добавить</Btn>}>
     <div className="code-library-tools"><label><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск" /></label>{kind === "law" && <select value={category} onChange={(event) => setCategory(event.target.value)}><option value="">Все категории</option>{CODE_CATEGORIES.map((item) => <option key={item}>{item}</option>)}</select>}</div>
     <div className="code-library">{filtered.map((item) => <details key={item.id}>
-      <summary><span><strong>{displayCodeText(item, mode)}</strong><small>{item.category ? CATEGORY_LABELS[item.category] : (item.active ? "активно" : "неактивно")}</small></span><ChevronRight size={16} /></summary>
+      <summary><span><strong>{displayCodeText(item)}</strong><small>{item.category ? CATEGORY_LABELS[item.category] : (item.active ? "активно" : "неактивно")}</small></span><ChevronRight size={16} /></summary>
       <div className="code-editor">
-        {kind === "trigger" ? <><Field label="Триггер на русском" value={item.labelRu} onChange={(labelRu) => patch(item.id, { labelRu })} /><Field label="Перевод триггера" value={item.labelEn} onChange={(labelEn) => patch(item.id, { labelEn })} /><Field label="Реакция на русском" value={item.responseRu} onChange={(responseRu) => patch(item.id, { responseRu })} /><Field label="Перевод реакции" value={item.responseEn} onChange={(responseEn) => patch(item.id, { responseEn })} /></> : <><Field label="Текст на русском" value={item.ru} onChange={(ru) => patch(item.id, { ru })} /><Field label="Перевод" value={item.en} onChange={(en) => patch(item.id, { en })} />{kind === "law" && <><Field label="Практика" value={item.practice} onChange={(practice) => patch(item.id, { practice })} /><ChoiceChips options={CODE_CATEGORIES.map((value) => ({ value, label: CATEGORY_LABELS[value] }))} value={item.category} onChange={(categoryValue) => patch(item.id, { category: categoryValue })} />{onActivate && <Btn primary={activeId !== item.id} disabled={activeId === item.id} onClick={() => onActivate(item.id)}>{activeId === item.id ? "Закон недели" : "Сделать законом недели"}</Btn>}</>}</>}
+        {kind === "trigger" ? <><Field label="Триггер" value={item.labelRu} onChange={(labelRu) => patch(item.id, { labelRu })} /><Field label="Реакция" value={item.responseRu} onChange={(responseRu) => patch(item.id, { responseRu })} /></> : <><Field label="Текст" value={item.ru} onChange={(ru) => patch(item.id, { ru })} />{kind === "law" && <><Field label="Практика" value={item.practice} onChange={(practice) => patch(item.id, { practice })} /><ChoiceChips options={CODE_CATEGORIES.map((value) => ({ value, label: CATEGORY_LABELS[value] }))} value={item.category} onChange={(categoryValue) => patch(item.id, { category: categoryValue })} />{onActivate && <Btn primary={activeId !== item.id} disabled={activeId === item.id} onClick={() => onActivate(item.id)}>{activeId === item.id ? "Закон недели" : "Сделать законом недели"}</Btn>}</>}</>}
         <CheckRow on={item.active} onClick={() => patch(item.id, { active: !item.active })} label="Активно" />
         <button type="button" className="icon-delete" aria-label="Удалить" onClick={() => updateItems(items.filter((entry) => entry.id !== item.id))}><X size={16} /></button>
       </div>
@@ -172,7 +170,6 @@ function CodeSettings({ code, updateCode }) {
   const settings = code.settings;
   const patch = (values) => updateCode({ ...code, settings: { ...settings, ...values } });
   return <Section kicker="Персонализация" title="Настройки Кодекса">
-    <span className="eyebrow">Язык</span><ChoiceChips options={LANGUAGES} value={settings.languageMode} onChange={(languageMode) => patch({ languageMode })} />
     <span className="eyebrow">Длительность</span><ChoiceChips options={[2, 3, 5].map((value) => ({ label: `${value} мин`, value }))} value={settings.duration} onChange={(duration) => patch({ duration })} />
     <div className="form-grid two"><Field label="Утверждений в день" type="number" min="1" max="6" value={settings.statementCount} onChange={(value) => patch({ statementCount: Math.max(1, Math.min(6, Number(value) || 3)) })} /><label className="field"><span className="flabel">Тон</span><select className="input" value={settings.tone} onChange={(event) => patch({ tone: event.target.value })}><option value="firm">Твёрдый</option><option value="calm">Спокойный</option><option value="direct">Прямой</option></select></label></div>
     <CheckRow on={settings.automaticWeeklyLaw} onClick={() => patch({ automaticWeeklyLaw: !settings.automaticWeeklyLaw })} label="Автоматический закон недели" />
@@ -193,7 +190,7 @@ export function CodeDashboardCard({ code, updateCode, date, tasks = [], updateTa
   const law = currentLaw(code, session);
   if (!code.onboardingComplete) return <section className="code-dashboard-card"><div><span className="eyebrow">КОД</span><strong>Кодекс ещё не активирован</strong><p>Слова должны быть подтверждены поведением.</p></div><Btn primary onClick={onOpen}>Начать настройку</Btn></section>;
   return <section className="code-dashboard-card">
-    <div className="code-dashboard-law"><span className="eyebrow">Закон недели</span><strong>{displayCodeText(law, code.settings.languageMode)}</strong></div>
+    <div className="code-dashboard-law"><span className="eyebrow">Закон недели</span><strong>{displayCodeText(law)}</strong></div>
     <div className="code-dashboard-move"><span className="eyebrow">Главный ход</span><strong>{session.mainMoveText || "Не задан"}</strong></div>
     <div className="code-dashboard-status"><span className={session.morningCompletedAt ? "done" : ""}>Утро</span><span className={session.mainMoveCompletedAt ? "done" : ""}>Ход</span><span className={session.eveningCompletedAt ? "done" : ""}>Вечер</span></div>
     <div className="button-pair"><Btn primary onClick={onOpen}>Открыть протокол</Btn>{session.mainMoveText && !session.mainMoveCompletedAt && <Btn onClick={() => {
@@ -206,7 +203,6 @@ export function CodeDashboardCard({ code, updateCode, date, tasks = [], updateTa
 
 export default function Code({ code, updateCode, date, tasks = [], updateTask }) {
   const [view, setView] = useState("protocol");
-  const mode = code.settings.languageMode;
   if (!code.onboardingComplete) return <CodeOnboarding code={code} updateCode={updateCode} date={date} />;
   const views = [
     ["protocol", "Сегодня"], ["laws", "Законы"], ["identity", "Личность"], ["triggers", "Триггеры"], ["reviews", "Обзор"], ["settings", "Настройки"],
@@ -215,9 +211,9 @@ export default function Code({ code, updateCode, date, tasks = [], updateTask })
     <header className="code-header"><div><span className="eyebrow">ПРОТОКОЛ СОЗНАНИЯ ОСНОВАТЕЛЯ</span><h2>КОД</h2><p>Личность → Внимание → Решение → Действие → Доказательство</p></div><StatusBadge tone="gold">{CATEGORY_LABELS[currentLaw(code, codeSession(code, date)).category]}</StatusBadge></header>
     <nav className="seg" aria-label="Разделы Кодекса">{views.map(([key, label]) => <button type="button" key={key} className={view === key ? "on" : ""} onClick={() => setView(key)}>{label}</button>)}</nav>
     {view === "protocol" && <Protocol code={code} updateCode={updateCode} date={date} tasks={tasks} updateTask={updateTask} />}
-    {view === "laws" && <EditableLibrary title="Законы" kicker="еженедельная практика" kind="law" mode={mode} items={code.laws} activeId={code.activeLawId} onActivate={(activeLawId) => updateCode({ ...code, activeLawId, activeLawSince: date })} updateItems={(laws) => updateCode({ ...code, laws })} />}
-    {view === "identity" && <EditableLibrary title="Библиотека личности" kicker="кто действует" kind="identity" mode={mode} items={code.identityStatements} updateItems={(identityStatements) => updateCode({ ...code, identityStatements })} />}
-    {view === "triggers" && <EditableLibrary title="Триггеры поведения" kicker="пауза → решение" kind="trigger" mode={mode} items={code.triggers} updateItems={(triggers) => updateCode({ ...code, triggers })} />}
+    {view === "laws" && <EditableLibrary title="Законы" kicker="еженедельная практика" kind="law" items={code.laws} activeId={code.activeLawId} onActivate={(activeLawId) => updateCode({ ...code, activeLawId, activeLawSince: date })} updateItems={(laws) => updateCode({ ...code, laws })} />}
+    {view === "identity" && <EditableLibrary title="Библиотека личности" kicker="кто действует" kind="identity" items={code.identityStatements} updateItems={(identityStatements) => updateCode({ ...code, identityStatements })} />}
+    {view === "triggers" && <EditableLibrary title="Триггеры поведения" kicker="пауза → решение" kind="trigger" items={code.triggers} updateItems={(triggers) => updateCode({ ...code, triggers })} />}
     {view === "reviews" && <Reviews code={code} updateCode={updateCode} />}
     {view === "settings" && <CodeSettings code={code} updateCode={updateCode} />}
   </div>;
