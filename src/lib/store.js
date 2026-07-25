@@ -67,6 +67,14 @@ export async function saveDeals(deals) {
   await persist("deals", deals);
 }
 
+export async function loadCode() {
+  return (await get("code")) || null;
+}
+
+export async function saveCode(code) {
+  await persist("code", code);
+}
+
 // Полный бэкап/восстановление: все ключи IndexedDB одним JSON-объектом
 export async function exportAllData() {
   const ks = await keys();

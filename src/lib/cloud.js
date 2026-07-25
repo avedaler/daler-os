@@ -16,6 +16,7 @@ const syncable = (k) =>
     k.startsWith("week:") ||
     k === "deals" ||
     k === "settings" ||
+    k === "code" ||
     k === "healthProfile" ||
     k === "trainingPlan"
   );

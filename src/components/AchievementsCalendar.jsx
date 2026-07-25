@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { migrateDay } from "../constants";
 import { calendarMetrics, dailyEvents } from "../lib/achievements";
 import { addDays, MO_NOM } from "../lib/date";
-import { listDays, loadDay } from "../lib/store";
+import { listDays, loadCode, loadDay } from "../lib/store";
+import { codeEventsForDate, migrateCodeState } from "../lib/code";
 import { Btn, EmptyState } from "./atoms";
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
@@ -52,6 +53,7 @@ export default function AchievementsCalendar({ date, today }) {
   const [month, setMonth] = useState(() => monthStart(date));
   const [selected, setSelected] = useState(date);
   const [records, setRecords] = useState({});
+  const [codeRecords, setCodeRecords] = useState({});
   const [loading, setLoading] = useState(true);
   const grid = useMemo(() => monthGrid(month), [month]);
 
@@ -59,17 +61,20 @@ export default function AchievementsCalendar({ date, today }) {
     let active = true;
     setLoading(true);
     (async () => {
-      const available = await listDays();
-      const wanted = available.filter((iso) => iso >= grid[0] && iso <= grid[grid.length - 1]);
+      const [available, rawCode] = await Promise.all([listDays(), loadCode()]);
+      const migratedCode = migrateCodeState(rawCode);
+      const codeDates = Object.keys(migratedCode.sessions || {});
+      const wanted = [...new Set([...available, ...codeDates])].filter((iso) => iso >= grid[0] && iso <= grid[grid.length - 1]);
       const loaded = await Promise.all(wanted.map(async (iso) => [iso, migrateDay(await loadDay(iso))]));
       if (!active) return;
       setRecords(Object.fromEntries(loaded));
+      setCodeRecords(Object.fromEntries(wanted.map((iso) => [iso, codeEventsForDate(migratedCode, iso)])));
       setLoading(false);
     })();
     return () => { active = false; };
   }, [grid]);
 
-  const eventsByDate = useMemo(() => Object.fromEntries(Object.entries(records).map(([iso, day]) => [iso, dailyEvents(day)])), [records]);
+  const eventsByDate = useMemo(() => Object.fromEntries([...new Set([...Object.keys(records), ...Object.keys(codeRecords)])].map((iso) => [iso, [...dailyEvents(records[iso]), ...(codeRecords[iso] || [])]])), [records, codeRecords]);
   const currentMonthEvents = useMemo(() => Object.fromEntries(Object.entries(eventsByDate).filter(([iso]) => iso.slice(0, 7) === month.slice(0, 7))), [eventsByDate, month]);
   const metrics = useMemo(() => calendarMetrics(currentMonthEvents), [currentMonthEvents]);
   const selectedEvents = eventsByDate[selected] || [];

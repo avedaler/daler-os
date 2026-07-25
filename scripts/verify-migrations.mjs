@@ -10,6 +10,7 @@ import {
   primaryOutcomeText,
 } from "../src/constants.js";
 import { calendarMetrics, dailyEvents } from "../src/lib/achievements.js";
+import { CODE_LAWS, codeEventsForDate, codeSession, defaultCodeState, migrateCodeState } from "../src/lib/code.js";
 
 assert.deepEqual(AFFIRMATIONS, [
   "Мои финансовые доходы сейчас увеличиваются",
@@ -118,5 +119,36 @@ assert.equal(achievementMetrics.noSmoke, 1);
 assert.equal(achievementMetrics.noAlcohol, 1);
 assert.equal(achievementMetrics.training, 1);
 assert.equal(achievementMetrics.outcomes, 1);
+
+const codeState = defaultCodeState();
+assert.equal(codeState.activeLawId, "calm");
+assert.equal(codeState.settings.languageMode, "ru");
+assert.ok(CODE_LAWS.length >= 10);
+const codeDay = codeSession(codeState, "2026-07-25");
+assert.equal(codeDay.expectedTriggerId, "pressure");
+assert.equal(codeDay.identityStatementIds.length, 3);
+const migratedCode = migrateCodeState({
+  settings: { languageMode: "ru" },
+  laws: [{ id: "calm", ru: "Мой сохранённый закон" }],
+  sessions: { "2026-07-24": { mainMoveText: "Подписать договор" } },
+});
+assert.equal(migratedCode.settings.languageMode, "ru");
+assert.equal(migratedCode.laws.find((item) => item.id === "calm").ru, "Мой сохранённый закон");
+assert.equal(migratedCode.laws.length, CODE_LAWS.length, "new seeded laws enrich saved Code data");
+assert.equal(migratedCode.sessions["2026-07-24"].mainMoveText, "Подписать договор");
+const completedCode = {
+  ...codeState,
+  sessions: {
+    "2026-07-25": {
+      ...codeDay,
+      mainMoveText: "Отправить договор",
+      morningCompletedAt: "2026-07-25T08:00:00Z",
+      mainMoveCompletedAt: "2026-07-25T12:00:00Z",
+      eveningCompletedAt: "2026-07-25T20:00:00Z",
+      behavioralProof: "Договор отправлен",
+    },
+  },
+};
+assert.deepEqual(codeEventsForDate(completedCode, "2026-07-25").map((event) => event.id), ["code-morning", "code-main-move", "code-evening"]);
 
 console.log("Migration and protocol checks passed.");

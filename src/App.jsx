@@ -14,12 +14,14 @@ import { dayScore, morningProgress } from "./lib/score";
 import {
   daysSinceExport,
   loadDay,
+  loadCode,
   loadDeals,
   loadHealthProfile,
   loadSettings,
   loadTrainingPlan,
   loadWeek,
   saveDay,
+  saveCode,
   saveDeals,
   saveHealthProfile,
   saveSettings,
@@ -30,15 +32,18 @@ import Today from "./components/Today";
 import Deals, { dealStatus } from "./components/Deals";
 import Overview from "./components/Overview";
 import More from "./components/More";
+import Code from "./components/Code";
 import LockScreen from "./components/LockScreen";
 import PrintSheet from "./components/PrintSheet";
 import { hasLock, isUnlockedThisSession } from "./lib/lock";
 import { cloudConfigured, currentUser, subscribeCloudChanges, syncAll } from "./lib/cloud";
+import { defaultCodeState, migrateCodeState } from "./lib/code";
 
 const NAV = [
   ["today", "Сегодня"],
   ["deals", "Сделки"],
   ["review", "Обзор"],
+  ["code", "Код"],
   ["more", "Ещё"],
 ];
 
@@ -46,6 +51,7 @@ const PAGE_TITLES = {
   today: "Сегодня",
   deals: "Сделки",
   review: "Обзор исполнения",
+  code: "КОД",
   more: "Система",
 };
 
@@ -72,12 +78,13 @@ function dayKicker(date, today) {
 }
 
 async function loadWorkspaceSnapshot(date) {
-  const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, previousReview] = await Promise.all([
+  const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, rawCode, previousReview] = await Promise.all([
     loadDay(date),
     loadSettings(),
     loadDeals(),
     loadHealthProfile(),
     loadTrainingPlan(),
+    loadCode(),
     loadWeek(isoWeek(addDays(date, -7))),
   ]);
   const nextSettings = {
@@ -91,6 +98,7 @@ async function loadWorkspaceSnapshot(date) {
     deals: rawDeals,
     healthProfile: migrateHealthProfile(rawProfile, nextSettings),
     trainingPlan: migrateTrainingPlan(rawPlan),
+    code: migrateCodeState(rawCode),
     northStar: previousReview?.nextWeek?.trim() || "",
   };
 }
@@ -106,6 +114,7 @@ export default function App() {
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, theme: storedTheme() }));
   const [healthProfile, setHealthProfile] = useState(defaultHealthProfile());
   const [trainingPlan, setTrainingPlan] = useState(defaultTrainingPlan());
+  const [code, setCode] = useState(defaultCodeState());
   const [northStar, setNorthStar] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [loadedDate, setLoadedDate] = useState("");
@@ -135,6 +144,7 @@ export default function App() {
     setDealsState(snapshot.deals);
     setHealthProfile(snapshot.healthProfile);
     setTrainingPlan(snapshot.trainingPlan);
+    setCode(snapshot.code);
     setNorthStar(snapshot.northStar);
     return true;
   }, []);
@@ -347,6 +357,14 @@ export default function App() {
     });
   }, []);
 
+  const updateCode = useCallback((nextOrPatch) => {
+    setCode((previous) => {
+      const next = typeof nextOrPatch === "function" ? nextOrPatch(previous) : nextOrPatch;
+      saveCode(next);
+      return next;
+    });
+  }, []);
+
   const { pts, max } = dayScore(s);
   const morning = morningProgress(s);
   const dealsAttention = deals.filter((deal) => ["overdue", "today", "nostep"].includes(dealStatus(deal, now.date).kind)).length;
@@ -354,6 +372,7 @@ export default function App() {
     today: s.dayStarted ? pts : `${morning.done}/${morning.max}`,
     deals: dealsAttention || "",
     review: "",
+    code: code.onboardingComplete ? "" : "!",
     more: daysSinceExport() >= 7 ? "!" : "",
   };
 
@@ -416,9 +435,10 @@ export default function App() {
             <span><strong>{cloudStatus === "signed_out" ? "Войдите для синхронизации" : "Синхронизация выключена"}</strong><small>Данные сейчас остаются только на этом устройстве</small></span>
           </button>}
 
-          {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} today={now.date} setDate={selectDate} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} />}
+          {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} today={now.date} setDate={selectDate} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} code={code} updateCode={updateCode} openCode={() => setTab("code")} />}
           {tab === "deals" && <div className="standard-page"><Deals deals={deals} setDeals={setDeals} today={now.date} /></div>}
           {tab === "review" && <div className="standard-page"><Overview date={date} setDate={selectDate} today={now.date} sub={reviewView} setSub={setReviewView} /></div>}
+          {tab === "code" && <div className="standard-page"><Code code={code} updateCode={updateCode} date={date} tasks={s.dailyProtocol.work.tasks || []} updateTask={(id, patch) => up((previous) => ({ dailyProtocol: { ...previous.dailyProtocol, work: { ...previous.dailyProtocol.work, tasks: (previous.dailyProtocol.work.tasks || []).map((task) => task.id === id ? { ...task, ...patch } : task) } } }))} /></div>}
           {tab === "more" && <div className="standard-page"><More initialView={moreInitialView} s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} onLock={() => setLocked(true)} /></div>}
         </main>
 
