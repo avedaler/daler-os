@@ -35,6 +35,7 @@ export function migrateBusinessKnowledge(value) {
           url: cleanText(item.sourceMeta.url, 1000),
           language: cleanText(item.sourceMeta.language, 40),
           truncated: Boolean(item.sourceMeta.truncated),
+          analysisMode: item.sourceMeta.analysisMode === "video" ? "video" : "captions",
         } : null,
       })),
   };

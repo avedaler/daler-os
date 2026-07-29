@@ -134,7 +134,10 @@ export default function AiChat({
         {messages.map((message, index) => <div className={`ai-message ${message.role}`} key={`${message.role}-${index}`}>
           <span>{message.role === "user" ? "Вы" : "DALER ИИ"}</span>
           <p>{message.content}</p>
-          {message.source?.type === "youtube" && <small className="ai-source">Проанализированы субтитры: {message.source.title}{message.source.truncated ? " · длинный текст сокращён" : ""}</small>}
+          {message.source?.type === "youtube" && <small className="ai-source">
+            {message.source.analysisMode === "video" ? "Проанализированы видеоряд и аудио" : "Проанализированы субтитры"}: {message.source.title}
+            {message.source.truncated ? " · длинный текст сокращён" : ""}
+          </small>}
         </div>)}
         {sending && <div className="ai-message assistant pending"><span>DALER ИИ</span><p>Анализирую…</p></div>}
       </div>

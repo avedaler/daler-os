@@ -13,6 +13,7 @@ const SOURCE_TYPES = [
 
 const TYPE_LABELS = Object.fromEntries(SOURCE_TYPES.map((item) => [item.value, item.label]));
 const EMPTY_DRAFT = { type: "note", title: "", url: "", content: "" };
+const YOUTUBE_URL_PATTERN = /(?:youtube\.com|youtu\.be)/i;
 
 function newId() {
   return globalThis.crypto?.randomUUID?.() || `knowledge-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -60,7 +61,8 @@ export default function BusinessAdvisor({
   };
 
   const extractKnowledge = async () => {
-    const hasYoutube = draft.type === "youtube" && /(?:youtube\.com|youtu\.be)/i.test(draft.url || draft.content);
+    const hasYoutube = YOUTUBE_URL_PATTERN.test(`${draft.url}\n${draft.content}`);
+    const sourceType = hasYoutube ? "youtube" : draft.type;
     if (!draft.content.trim() && !hasYoutube) {
       setError("Добавь текст, конспект или ссылку YouTube");
       return;
@@ -76,7 +78,7 @@ export default function BusinessAdvisor({
           mode: "business",
           task: "ingest",
           messages: [{ role: "user", content: "Извлеки и структурируй знания из этого источника." }],
-          resource: draft,
+          resource: { ...draft, type: sourceType },
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -84,7 +86,7 @@ export default function BusinessAdvisor({
       const source = payload.source || null;
       const resource = {
         id: newId(),
-        type: draft.type,
+        type: sourceType,
         title: draft.title.trim() || source?.title || "Источник без названия",
         url: draft.url.trim() || source?.url || "",
         ...payload.knowledge,
@@ -95,8 +97,12 @@ export default function BusinessAdvisor({
         ...current,
         resources: [...(current?.resources || []).filter((item) => item.id !== resource.id), resource],
       }));
-      setDraft({ ...EMPTY_DRAFT, type: draft.type });
-      setNotice(`Знания из «${resource.title}» сохранены и доступны для анализа`);
+      setDraft({ ...EMPTY_DRAFT, type: sourceType });
+      setNotice(source?.analysisMode === "video"
+        ? `Видеоряд и аудио «${resource.title}» проанализированы; знания сохранены`
+        : source?.type === "youtube"
+          ? `Проанализированы субтитры «${resource.title}»; знания сохранены`
+          : `Знания из «${resource.title}» сохранены и доступны для анализа`);
     } catch (requestError) {
       setError(requestError.message || "Не удалось сохранить знания");
     } finally {
@@ -130,7 +136,12 @@ export default function BusinessAdvisor({
 
       <div className="business-source-form">
         <Field label="Название источника" value={draft.title} onChange={(title) => patchDraft({ title })} placeholder="Например: Хорошая стратегия, плохая стратегия" />
-        <Field label={draft.type === "youtube" ? "Ссылка YouTube" : "Ссылка, если есть"} value={draft.url} onChange={(url) => patchDraft({ url })} placeholder="https://…" />
+        <Field
+          label={draft.type === "youtube" ? "Ссылка YouTube" : "Ссылка, если есть"}
+          value={draft.url}
+          onChange={(url) => patchDraft({ url, ...(YOUTUBE_URL_PATTERN.test(url) ? { type: "youtube" } : {}) })}
+          placeholder="https://…"
+        />
         <label className="field business-source-content">
           <span>{draft.type === "youtube" ? "Дополнительный контекст, необязательно" : "Текст, конспект или фрагмент"}</span>
           <textarea
@@ -138,7 +149,7 @@ export default function BusinessAdvisor({
             maxLength={60000}
             value={draft.content}
             onChange={(event) => patchDraft({ content: event.target.value })}
-            placeholder={draft.type === "youtube" ? "Для видео достаточно ссылки с доступными субтитрами." : "Вставь заметки или ключевой фрагмент источника…"}
+            placeholder={draft.type === "youtube" ? "Для публичного видео достаточно ссылки YouTube." : "Вставь заметки или ключевой фрагмент источника…"}
           />
         </label>
         <input ref={fileRef} type="file" accept=".txt,.md,.csv,.json,text/plain,text/markdown,application/json" hidden onChange={(event) => readFile(event.target.files?.[0])} />
@@ -148,7 +159,7 @@ export default function BusinessAdvisor({
         </div>
         {notice && <p className="business-notice">{notice}</p>}
         {error && <p className="ai-error" role="alert">{error}</p>}
-        <small className="business-privacy">Сохраняется структурированный конспект, а не полный текст источника. Для YouTube анализируется речь из субтитров; визуальный ряд пока не распознаётся.</small>
+        <small className="business-privacy">Сохраняется структурированный конспект, а не полный текст источника. Для публичных YouTube-видео сначала анализируются видеоряд и аудио; субтитры используются как резервный режим.</small>
       </div>
 
       <div className="business-library">
@@ -160,6 +171,9 @@ export default function BusinessAdvisor({
             <button type="button" className="icon-button" onClick={(event) => { event.preventDefault(); removeResource(resource.id); }} aria-label={`Удалить ${resource.title}`} title="Удалить источник"><Trash2 size={16} aria-hidden="true" /></button>
           </summary>
           <div>
+            {resource.sourceMeta?.type === "youtube" && <small className="business-privacy">
+              {resource.sourceMeta.analysisMode === "video" ? "Источник: видеоряд и аудио" : "Источник: субтитры"}
+            </small>}
             {resource.summary && <p>{resource.summary}</p>}
             {resource.skills?.length > 0 && <div className="business-knowledge-row"><strong>Навыки</strong><span>{resource.skills.join(" · ")}</span></div>}
             {resource.principles?.length > 0 && <div className="business-knowledge-row"><strong>Принципы</strong><span>{resource.principles.join(" · ")}</span></div>}
