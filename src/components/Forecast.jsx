@@ -72,6 +72,106 @@ function computeRange(from, to) {
   return { days, dedupMoons, retroMerc, best, risky };
 }
 
+function fitLabel(fit) {
+  if (fit >= 2) return { text: "сильный день", color: C.green };
+  if (fit <= -2) return { text: "день осторожности", color: C.red };
+  return { text: "нейтральный день", color: C.muted };
+}
+
+function periodSummary(r) {
+  const signs = new Map();
+  let growing = 0;
+  let waning = 0;
+  let windows = 0;
+  let cautions = 0;
+
+  for (const d of r.days) {
+    signs.set(d.a.moonSign, (signs.get(d.a.moonSign) || 0) + 1);
+    if (d.a.phaseAngle > 0 && d.a.phaseAngle < 180) growing++;
+    else waning++;
+    windows += d.a.windows.length;
+    cautions += d.a.cautions.length;
+  }
+
+  const dominant = [...signs.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([sign, count]) => `${SIGNS[sign]} · ${count} дн.`);
+
+  const rhythm = growing > waning
+    ? "Период преимущественно растущий: продвигай, усиливай и выводи начатое наружу."
+    : waning > growing
+      ? "Период преимущественно убывающий: завершай, собирай деньги и освобождай ресурсы."
+      : "Период сбалансирован: чередуй продвижение с завершением и аудитом.";
+
+  const climate = windows > cautions
+    ? `Поддерживающих аспектов больше (${windows} против ${cautions}): используй открывающиеся окна, сохраняя проверку фактов.`
+    : cautions > windows
+      ? `Напряжённых аспектов больше (${cautions} против ${windows}): снизь скорость, перепроверяй условия и не реагируй импульсивно.`
+      : `Поддерживающих и напряжённых аспектов поровну (${windows}): результат зависит от дисциплины и качества подготовки.`;
+
+  return { dominant, rhythm, climate };
+}
+
+function splitIntoWeeks(days) {
+  const groups = [];
+  for (const day of days) {
+    const monday = addDays(day.iso, -((weekday(day.iso) + 6) % 7));
+    const last = groups[groups.length - 1];
+    if (!last || last.key !== monday) groups.push({ key: monday, days: [day] });
+    else last.days.push(day);
+  }
+  return groups;
+}
+
+function DayDetails({ day, today, open, onToggle }) {
+  const mark = fitLabel(day.fit);
+  return (
+    <div style={{
+      borderBottom: `1px solid ${C.line}`,
+      background: day.iso === today ? "rgba(200,164,92,.06)" : "transparent",
+    }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        style={{
+          width: "100%", minHeight: 58, padding: "11px 4px", border: 0, cursor: "pointer",
+          background: "transparent", color: C.ivory, textAlign: "left", fontFamily: FONT.sans,
+          display: "grid", gridTemplateColumns: "minmax(108px, .8fr) minmax(150px, 1.4fr) auto",
+          gap: 12, alignItems: "center",
+        }}
+      >
+        <span>
+          <strong style={{ display: "block", fontSize: 14 }}>{shortDate(day.iso)}</strong>
+          <span style={{ color: C.muted, fontSize: 11, fontFamily: FONT.mono }}>личный день {day.pd}</span>
+        </span>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: "block", fontSize: 14 }}>{MOON_GLYPH[day.a.moonSign]} Луна в {day.a.moonSignLoc}</span>
+          <span style={{ display: "block", color: mark.color, fontSize: 11, fontFamily: FONT.mono }}>{mark.text}</span>
+        </span>
+        <span aria-hidden style={{ color: C.gold, fontSize: 16 }}>{open ? "−" : "+"}</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: "2px 4px 18px", fontSize: 14, lineHeight: 1.65 }}>
+          <div style={{ color: C.gold, fontFamily: FONT.serif, fontSize: 17, marginBottom: 9 }}>
+            {day.a.phase.name} · освещённость {day.a.illum}%
+          </div>
+          <div style={{ whiteSpace: "pre-line", color: C.ivory }}>{astroToText(day.a)}</div>
+          <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 12, paddingTop: 11 }}>
+            <span style={{ color: C.goldDim, fontFamily: FONT.mono, fontSize: 10, letterSpacing: ".08em" }}>ЛИЧНЫЙ ДЕНЬ {day.pd} · </span>
+            {PD_MEANING[day.pd]}
+          </div>
+          <div style={{ marginTop: 10, color: mark.color, fontFamily: FONT.mono, fontSize: 12 }}>
+            Сделки: {day.fit >= 2 ? "хорошее окно для конкретного шага" : day.fit <= -2 ? "не спешить с подписанием и оплатой" : "действовать после проверки условий"}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function rangeToMarkdown(from, to, r) {
   const L = [`# Расчёт DALER OS · ${from} — ${to}`, ""];
   if (r.best.length) L.push("**Лучшие дни для сделок:** " + r.best.map((d) => `${d.iso} (личный день ${d.pd}, Луна в ${SIGNS[d.a.moonSign]})`).join("; "));
@@ -148,6 +248,7 @@ export default function Forecast({ today }) {
   const [mode, setMode] = useState("day");
   const [anchor, setAnchor] = useState(today);
   const [rangeTo, setRangeTo] = useState(addDays(today, 6));
+  const [openDays, setOpenDays] = useState(() => new Set([today]));
 
   const [from, to] =
     mode === "day" ? [anchor, anchor]
@@ -156,6 +257,12 @@ export default function Forecast({ today }) {
     : [anchor, rangeTo >= anchor ? rangeTo : anchor];
 
   const r = useMemo(() => computeRange(from, to), [from, to]);
+  const summary = useMemo(() => periodSummary(r), [r]);
+  const weeks = useMemo(() => splitIntoWeeks(r.days), [r]);
+
+  useEffect(() => {
+    setOpenDays(new Set(mode === "day" ? [anchor] : r.days.some((d) => d.iso === today) ? [today] : [r.days[0]?.iso].filter(Boolean)));
+  }, [mode, from, to, today]);
 
   // фактические результаты за период (если записи есть)
   const [facts, setFacts] = useState(null);
@@ -278,7 +385,72 @@ export default function Forecast({ today }) {
 
       {/* Таблица периода */}
       {!single && (
-        <Section kicker="по дням" title="Календарь периода">
+        <>
+        <Section kicker={mode === "month" ? "стратегия месяца" : "стратегия недели"} title="Главное в периоде">
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ fontSize: 15, lineHeight: 1.65, fontFamily: FONT.serif }}>{summary.rhythm}</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.6, color: C.ivory }}>{summary.climate}</div>
+            <div>
+              <div style={{ color: C.goldDim, fontFamily: FONT.mono, fontSize: 10, letterSpacing: ".1em", marginBottom: 7 }}>ДОМИНИРУЮЩИЕ ЗНАКИ ЛУНЫ</div>
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                {summary.dominant.map((item) => <span key={item} className="chip on">{item}</span>)}
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        {mode === "month" && (
+          <Section kicker="ритм месяца" title="Недели месяца">
+            <div style={{ display: "grid", gap: 10 }}>
+              {weeks.map((week, index) => {
+                const best = [...week.days].sort((a, b) => b.fit - a.fit)[0];
+                const riskCount = week.days.filter((d) => d.fit <= -2).length;
+                const start = week.days[0].iso;
+                const end = week.days[week.days.length - 1].iso;
+                return (
+                  <div key={week.key} style={{ padding: "11px 0", borderBottom: index === weeks.length - 1 ? 0 : `1px solid ${C.line}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 5 }}>
+                      <strong style={{ fontFamily: FONT.serif, fontSize: 16 }}>Неделя {index + 1}</strong>
+                      <span style={{ color: C.muted, fontFamily: FONT.mono, fontSize: 11 }}>{shortDate(start)} — {shortDate(end)}</span>
+                    </div>
+                    <div style={{ fontSize: 13, lineHeight: 1.55 }}>
+                      Лучшее окно: <span style={{ color: C.green }}>{shortDate(best.iso)}</span>
+                      {riskCount ? <span style={{ color: C.red }}> · дней осторожности: {riskCount}</span> : <span style={{ color: C.muted }}> · выраженных дней риска нет</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        <Section kicker="нажми на день для полного прогноза" title="Подробный прогноз">
+          <div>
+            {r.days.map((d) => (
+              <DayDetails
+                key={d.iso}
+                day={d}
+                today={today}
+                open={openDays.has(d.iso)}
+                onToggle={() => setOpenDays((current) => {
+                  const next = new Set(current);
+                  if (next.has(d.iso)) next.delete(d.iso);
+                  else next.add(d.iso);
+                  return next;
+                })}
+              />
+            ))}
+          </div>
+          <div style={{ marginTop: 14, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <Btn primary onClick={download}>Скачать полный расчёт</Btn>
+            <span style={{ fontSize: 12, color: C.muted }}>Эфемерида рассчитана на 12:00 по Куала-Лумпуру</span>
+          </div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 10, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
+            Расчёт служит рамкой для планирования и не заменяет проверку фактов при решениях о капитале.
+          </div>
+        </Section>
+
+        <Section kicker="компактный обзор" title="Календарь периода">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
@@ -307,14 +479,9 @@ export default function Forecast({ today }) {
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop: 14, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <Btn primary onClick={download}>Скачать расчёт (Markdown)</Btn>
-            <span style={{ fontSize: 12, color: C.muted }}>ЛД — личный день · ℞ — первые буквы ретроградных планет</span>
-          </div>
-          <div style={{ fontSize: 12, color: C.muted, marginTop: 10, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
-            Context, not command: расчёт — психологическая рамка для планирования, а не основание для решений о капитале.
-          </div>
+          <div style={{ marginTop: 12, fontSize: 12, color: C.muted }}>ЛД — личный день · ℞ — первые буквы ретроградных планет</div>
         </Section>
+        </>
       )}
 
       {single && (
