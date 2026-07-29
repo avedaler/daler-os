@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
+    "ai": "^6.0.237",
     "astronomy-engine": "^2.1.19",
     "idb-keyval": "^6.2.1",
     "lucide-react": "^0.468.0",

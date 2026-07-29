@@ -1,6 +1,6 @@
+import { generateText } from "ai";
 import { getYoutubeTranscript, parseYouTubeId } from "./_lib/youtube.js";
 
-const GATEWAY_URL = "https://ai-gateway.vercel.sh/v1/responses";
 const DEFAULT_MODEL = "openai/gpt-5.4";
 const ALLOWED_MODES = new Set(["forecast", "development", "business"]);
 const MAX_MESSAGES = 12;
@@ -43,16 +43,6 @@ function isAllowedOrigin(origin) {
   } catch {
     return false;
   }
-}
-
-function extractText(payload) {
-  if (typeof payload?.output_text === "string") return payload.output_text.trim();
-  for (const item of payload?.output || []) {
-    for (const part of item?.content || []) {
-      if (part?.type === "output_text" && typeof part.text === "string") return part.text.trim();
-    }
-  }
-  return "";
 }
 
 function cleanText(value, max = 3000) {
@@ -101,29 +91,23 @@ ${videoSource.transcript}
 Важно: субтитры передают речь и текстовую дорожку, но не описывают визуальный ряд видео.`;
 }
 
-async function callGateway(token, body) {
-  const gatewayResponse = await fetch(GATEWAY_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+async function callGateway({ instructions, input, max_output_tokens, tag }) {
+  const result = await generateText({
+    model: process.env.AI_CHAT_MODEL || DEFAULT_MODEL,
+    system: instructions,
+    messages: input,
+    maxOutputTokens: max_output_tokens,
+    providerOptions: {
+      gateway: {
+        tags: ["daler-os", tag || "chat"],
+      },
     },
-    body: JSON.stringify({
-      model: process.env.AI_CHAT_MODEL || DEFAULT_MODEL,
-      store: false,
-      ...body,
-    }),
   });
-  const payload = await gatewayResponse.json().catch(() => ({}));
-  const text = extractText(payload);
-  if (!gatewayResponse.ok || !text) {
-    console.error("AI Gateway error", gatewayResponse.status, payload?.error?.message || "empty response");
-    throw new Error("ИИ не смог подготовить ответ");
-  }
-  return text;
+  if (!result.text?.trim()) throw new Error("ИИ не смог подготовить ответ");
+  return result.text.trim();
 }
 
-async function ingestResource(body, token) {
+async function ingestResource(body) {
   const resource = body.resource && typeof body.resource === "object" ? body.resource : {};
   const type = ["book", "youtube", "article", "note"].includes(resource.type) ? resource.type : "note";
   const title = cleanText(resource.title, 240);
@@ -159,10 +143,11 @@ async function ingestResource(body, token) {
 ${sourceContent}
 </source>`,
   }];
-  const text = await callGateway(token, {
+  const text = await callGateway({
     instructions: INGEST_PROMPT,
     input,
     max_output_tokens: 1200,
+    tag: "business-ingest",
   });
   return {
     knowledge: parseKnowledge(text),
@@ -175,9 +160,6 @@ export default async function handler(request, response) {
   if (request.method !== "POST") return response.status(405).json({ error: "Разрешён только POST-запрос" });
   if (!isAllowedOrigin(request.headers.origin)) return response.status(403).json({ error: "Источник запроса не разрешён" });
 
-  const token = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
-  if (!token) return response.status(503).json({ error: "ИИ ещё не подключён к проекту" });
-
   let body;
   try {
     body = typeof request.body === "string" ? JSON.parse(request.body || "{}") : request.body || {};
@@ -189,7 +171,7 @@ export default async function handler(request, response) {
 
   if (mode === "business" && body.task === "ingest") {
     try {
-      const result = await ingestResource(body, token);
+      const result = await ingestResource(body);
       return response.status(200).json(result);
     } catch (error) {
       console.error("Knowledge ingestion failed", error);
@@ -225,10 +207,11 @@ ${context || "Контекст не передан."}
 </context>`;
 
   try {
-    const text = await callGateway(token, {
+    const text = await callGateway({
       instructions,
       input: messages,
       max_output_tokens: mode === "business" ? 1000 : 700,
+      tag: `${mode}-chat`,
     });
     return response.status(200).json({ text, source: sourceMetadata(videoSource) });
   } catch (error) {
