@@ -67,7 +67,7 @@ function cleanGeneratedText(value) {
     throw new Error("ИИ вернул служебный анализ вместо готового ответа");
   }
   return text
-    .replace(/(?:\[(?:\d+(?:\s*,\s*\d+)*|context|source|источник)\]|【\d+】)/gi, "")
+    .replace(/(?:\[(?:\d+(?:\s*,\s*\d+)*|context|контекст|source|источник)\]|【\d+】)/gi, "")
     .replace(/[ \t]+(\r?\n)/g, "$1")
     .trim();
 }
