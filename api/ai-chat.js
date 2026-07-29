@@ -1,7 +1,11 @@
 import { generateText } from "ai";
 import { getYoutubeTranscript, parseYouTubeId } from "./_lib/youtube.js";
 
-const DEFAULT_MODEL = "inclusionai/ling-3.0-flash-free";
+const DEFAULT_MODEL = "zai/glm-4.6v-flash";
+const MODEL_FALLBACKS = [
+  "inclusionai/ling-3.0-flash-free",
+  "perplexity/sonar",
+];
 const ALLOWED_MODES = new Set(["forecast", "development", "business"]);
 const MAX_MESSAGES = 12;
 const MAX_MESSAGE_LENGTH = 4000;
@@ -101,6 +105,7 @@ async function callGateway({ instructions, input, max_output_tokens, tag }) {
       providerOptions: {
         gateway: {
           tags: ["daler-os", tag || "chat"],
+          models: MODEL_FALLBACKS,
         },
       },
     });
@@ -112,6 +117,9 @@ async function callGateway({ instructions, input, max_output_tokens, tag }) {
       error?.responseBody,
       error?.data?.error?.message,
       error?.data?.message,
+      error?.lastError?.message,
+      error?.lastError?.responseBody,
+      ...(Array.isArray(error?.errors) ? error.errors.flatMap((item) => [item?.message, item?.responseBody]) : []),
     ].filter(Boolean).join(" | ");
     console.error(
       "AI Gateway request failed",
