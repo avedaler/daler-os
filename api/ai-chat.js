@@ -107,8 +107,18 @@ async function callGateway({ instructions, input, max_output_tokens, tag }) {
     if (!result.text?.trim()) throw new Error("ИИ не смог подготовить ответ");
     return result.text.trim();
   } catch (error) {
-    const details = String(error?.message || "");
-    console.error("AI Gateway request failed", error?.statusCode || "unknown", error?.name || "Error");
+    const details = [
+      error?.message,
+      error?.responseBody,
+      error?.data?.error?.message,
+      error?.data?.message,
+    ].filter(Boolean).join(" | ");
+    console.error(
+      "AI Gateway request failed",
+      error?.statusCode || "unknown",
+      error?.name || "Error",
+      details.replace(/\s+/g, " ").slice(0, 800)
+    );
     const wrapped = new Error(
       /credit card|free credits|payment required/i.test(details)
         ? "ИИ временно недоступен: в Vercel нужно активировать кредиты AI Gateway"
