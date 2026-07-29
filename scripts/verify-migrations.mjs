@@ -11,6 +11,7 @@ import {
 } from "../src/constants.js";
 import { calendarMetrics, dailyEvents } from "../src/lib/achievements.js";
 import { CODE_LAWS, codeEventsForDate, codeSession, defaultCodeState, migrateCodeState } from "../src/lib/code.js";
+import { businessResourceContext, migrateBusinessChat, migrateBusinessKnowledge } from "../src/lib/business.js";
 
 assert.deepEqual(AFFIRMATIONS, [
   "Мои финансовые доходы сейчас увеличиваются",
@@ -150,5 +151,21 @@ const completedCode = {
   },
 };
 assert.deepEqual(codeEventsForDate(completedCode, "2026-07-25").map((event) => event.id), ["code-morning", "code-main-move", "code-evening"]);
+
+const businessKnowledge = migrateBusinessKnowledge({
+  resources: [{
+    id: "strategy-book",
+    type: "book",
+    title: "Стратегия",
+    summary: "Сконцентрировать усилия на главном ограничении.",
+    skills: ["Диагностика ограничения"],
+    principles: ["Не распылять ресурсы"],
+    frameworks: ["Диагноз → политика → действия"],
+    decisionQuestions: ["Какое ограничение сейчас главное?"],
+  }],
+});
+assert.equal(businessKnowledge.resources.length, 1);
+assert.match(businessResourceContext(businessKnowledge.resources[0]), /Диагностика ограничения/);
+assert.deepEqual(migrateBusinessChat([{ role: "user", content: "Проверить гипотезу" }, { role: "system", content: "скрыто" }]), [{ role: "user", content: "Проверить гипотезу", source: null }]);
 
 console.log("Migration and protocol checks passed.");

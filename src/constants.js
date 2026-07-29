@@ -496,7 +496,7 @@ export const IDENTITY_LINES = [
 export const HOBBIES = ["Overlanding", "Golf range", "Padel"];
 
 // Стадии сделки: формула Master OS
-export const STAGES = ["Idea", "Qualified", "Introduced", "Meeting", "Proposal", "Negotiation", "Signed", "Paid", "Live", "Recurring"];
+export const STAGES = ["Идея", "Квалифицирована", "Представлена", "Встреча", "Предложение", "Переговоры", "Подписано", "Оплачено", "Запущено", "Повторяемая"];
 export const MACRO_STAGES = ["Контакт", "Переговоры", "Подписание", "Оплата", "Запуск", "Повторяемая"];
 export const macroStageIndex = (stage = 0) => stage <= 3 ? 0 : stage <= 5 ? 1 : stage === 6 ? 2 : stage === 7 ? 3 : stage === 8 ? 4 : 5;
 

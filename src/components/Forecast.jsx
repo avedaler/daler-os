@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
 import { C, FONT, migrateDay } from "../constants";
 import { Section, Btn, StatusBadge } from "./atoms";
 import { computeAstro, astroToText, MOON_SIGN_TEXT, SIGNS } from "../lib/astro";
@@ -7,8 +7,8 @@ import { personalDay, PD_MEANING } from "../lib/numerology";
 import { prettyDate, weekday, addDays } from "../lib/date";
 import { loadDay } from "../lib/store";
 import { dayScore } from "../lib/score";
+import AiChat from "./AiChat";
 
-const MOON_GLYPH = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"];
 const MAX_DAYS = 120;
 
 const WD_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
@@ -147,7 +147,7 @@ function DayDetails({ day, today, open, onToggle }) {
           <span style={{ color: C.muted, fontSize: 11, fontFamily: FONT.mono }}>личный день {day.pd}</span>
         </span>
         <span style={{ minWidth: 0 }}>
-          <span style={{ display: "block", fontSize: 14 }}>{MOON_GLYPH[day.a.moonSign]} Луна в {day.a.moonSignLoc}</span>
+          <span style={{ display: "block", fontSize: 14 }}>Луна в {day.a.moonSignLoc}</span>
           <span style={{ display: "block", color: mark.color, fontSize: 11, fontFamily: FONT.mono }}>{mark.text}</span>
         </span>
         <span aria-hidden style={{ color: C.gold, fontSize: 16 }}>{open ? "−" : "+"}</span>
@@ -189,7 +189,7 @@ function rangeToMarkdown(from, to, r) {
   return L.join("\n");
 }
 
-export function TodayForecast({ date, compact = false }) {
+export function TodayForecast({ date, compact = false, onOpen }) {
   const [expanded, setExpanded] = useState(false);
   const result = useMemo(() => {
     const astro = computeAstro(date);
@@ -229,6 +229,7 @@ export function TodayForecast({ date, compact = false }) {
         <p>{astro.retro.length ? `${astro.retro.join(", ")}. Документы, сроки и договорённости перепроверять.` : "Ретроградных факторов в расчёте нет."}</p>
       </div>
     </div>}
+    {onOpen && <button type="button" className="forecast-ai-link" onClick={onOpen}><MessageCircle size={15} aria-hidden="true" /><span>Открыть расчёт и обсудить с ИИ</span></button>}
   </section>;
   return <section className="today-forecast" aria-label="Расчет дня">
     <div className="today-forecast-head">
@@ -311,20 +312,39 @@ export default function Forecast({ today }) {
   );
 
   const single = r.days.length === 1 ? r.days[0] : null;
+  const forecastContext = JSON.stringify({
+    period: { mode, from, to, days: r.days.length },
+    summary,
+    bestDays: r.best.map((day) => ({ date: day.iso, personalDay: day.pd, moon: SIGNS[day.a.moonSign], score: day.fit })),
+    cautionDays: r.risky.map((day) => day.iso),
+    retrogradeMercury: r.retroMerc,
+    moonEvents: r.dedupMoons,
+    dailyCalculations: r.days.slice(0, 45).map((day) => ({
+      date: day.iso,
+      personalDay: day.pd,
+      moon: day.a.moonSignLoc,
+      phase: day.a.phase.name,
+      illumination: day.a.illum,
+      windows: day.a.windows.map((item) => item.text),
+      cautions: day.a.cautions.map((item) => item.text),
+      retrograde: day.a.retro,
+      dealFitness: day.fit,
+    })),
+  });
 
   return (
     <>
       <Section kicker="эфемерида + нумерология · по требованию" title="Расчёт периода">
-        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        <div className="forecast-mode-tabs">
           {[["day", "День"], ["week", "Неделя"], ["month", "Месяц"], ["range", "Период"]].map(([k, label]) => (
             <Btn key={k} primary={mode === k} onClick={() => setMode(k)}>{label}</Btn>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
-          <Btn onClick={() => shift(-1)}>◀</Btn>
+        <div className="forecast-date-controls">
+          <Btn onClick={() => shift(-1)}><ChevronLeft size={17} aria-hidden="true" /></Btn>
           {dateInput(anchor, setAnchor, "Начальная дата")}
           {mode === "range" && <>— {dateInput(rangeTo, setRangeTo, "Конечная дата")}</>}
-          <Btn onClick={() => shift(1)}>▶</Btn>
+          <Btn onClick={() => shift(1)}><ChevronRight size={17} aria-hidden="true" /></Btn>
           <Btn onClick={() => { setAnchor(today); setRangeTo(addDays(today, 6)); }}>Сегодня</Btn>
           <span style={{ fontSize: 12, color: C.muted, fontFamily: FONT.mono }}>
             {from} — {to} · {r.days.length} дн.{r.days.length >= MAX_DAYS ? ` (максимум ${MAX_DAYS})` : ""}
@@ -370,7 +390,7 @@ export default function Forecast({ today }) {
       {single && (
         <Section kicker={`личный день ${single.pd}`} title={prettyDate(single.iso)}>
           <div style={{ fontFamily: FONT.serif, fontSize: 20, color: C.gold, marginBottom: 10 }}>
-            {MOON_GLYPH[single.a.moonSign]} Луна в {single.a.moonSignLoc} · {single.a.phase.name} {single.a.illum}%
+            Луна в {single.a.moonSignLoc} · {single.a.phase.name} {single.a.illum}%
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.7, color: C.ivory, whiteSpace: "pre-line" }}>{astroToText(single.a)}</div>
           <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 12, paddingTop: 12, fontSize: 14, lineHeight: 1.6 }}>
@@ -450,7 +470,9 @@ export default function Forecast({ today }) {
           </div>
         </Section>
 
-        <Section kicker="компактный обзор" title="Календарь периода">
+        <details className="forecast-technical">
+          <summary>Технический календарь периода</summary>
+          <Section kicker="таблица расчёта" title="Календарь периода">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
@@ -467,7 +489,7 @@ export default function Forecast({ today }) {
                     <tr key={d.iso} style={{ borderBottom: `1px solid ${C.line}`, background: d.iso === today ? "var(--accent-subtle)" : "transparent" }}>
                       <td style={{ padding: "7px 8px", color: C.ivory, whiteSpace: "nowrap" }}>{shortDate(d.iso)}</td>
                       <td style={{ padding: "7px 8px", fontFamily: FONT.mono, color: d.pd === 8 ? C.gold : C.ivory }}>{d.pd}</td>
-                      <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>{MOON_GLYPH[d.a.moonSign]} {SIGNS[d.a.moonSign]}</td>
+                      <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>{SIGNS[d.a.moonSign]}</td>
                       <td style={{ padding: "7px 8px", color: C.muted, whiteSpace: "nowrap" }}>{d.a.illum}%</td>
                       <td style={{ padding: "7px 8px", color: d.a.windows.length ? C.green : C.muted, fontFamily: FONT.mono }}>{d.a.windows.length || "—"}</td>
                       <td style={{ padding: "7px 8px", color: d.a.cautions.length ? C.red : C.muted, fontFamily: FONT.mono }}>{d.a.cautions.length || "—"}</td>
@@ -480,15 +502,31 @@ export default function Forecast({ today }) {
             </table>
           </div>
           <div style={{ marginTop: 12, fontSize: 12, color: C.muted }}>ЛД — личный день · ℞ — первые буквы ретроградных планет</div>
-        </Section>
+          </Section>
+        </details>
         </>
       )}
 
       {single && (
         <div style={{ display: "flex", gap: 12 }}>
-          <Btn primary onClick={download}>Скачать расчёт (Markdown)</Btn>
+          <Btn primary onClick={download}>Скачать расчёт</Btn>
         </div>
       )}
+
+      <AiChat
+        key={`forecast-${from}-${to}`}
+        mode="forecast"
+        title="Обсудить прогноз"
+        description="Задавай вопросы о смысле периода, окнах и рисках. ИИ опирается на расчёт выше и не меняет факты эфемериды."
+        context={forecastContext}
+        contextLabel={`${from} — ${to}; ${r.days.length} дн.`}
+        storageKey={`daler-os-ai-forecast-${from}-${to}`}
+        quickPrompts={[
+          "Какой практический фокус выбрать на этот период?",
+          "Какие дни лучше оставить для переговоров и подписания?",
+          "Где прогноз предупреждает о поспешном решении?",
+        ]}
+      />
     </>
   );
 }

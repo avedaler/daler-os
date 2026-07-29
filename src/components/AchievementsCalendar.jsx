@@ -108,7 +108,7 @@ export default function AchievementsCalendar({ date, today }) {
       <div><span>Без алкоголя</span><strong>{metrics.noAlcohol}</strong><small>{pluralize(metrics.noAlcohol, "день", "дня", "дней")}</small></div>
       <div><span>Тренировки</span><strong>{metrics.training}</strong><small>{pluralize(metrics.training, "день", "дня", "дней")}</small></div>
       <div><span>Результаты</span><strong>{metrics.outcomes}</strong><small>закрыто</small></div>
-      <div><span>Shutdown</span><strong>{metrics.shutdowns}</strong><small>{pluralize(metrics.shutdowns, "день", "дня", "дней")}</small></div>
+      <div><span>Закрытие дня</span><strong>{metrics.shutdowns}</strong><small>{pluralize(metrics.shutdowns, "день", "дня", "дней")}</small></div>
       <div><span>Все события</span><strong>{metrics.total}</strong><small>{pluralize(metrics.total, "отметка", "отметки", "отметок")}</small></div>
     </div>
 

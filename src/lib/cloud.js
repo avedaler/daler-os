@@ -23,7 +23,9 @@ const syncable = (k) =>
     k === "settings" ||
     k === "code" ||
     k === "healthProfile" ||
-    k === "trainingPlan"
+    k === "trainingPlan" ||
+    k === "businessKnowledge" ||
+    k === "businessChat"
   );
 
 export function getConfig() {

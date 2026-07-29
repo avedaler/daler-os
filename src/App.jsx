@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CloudOff, Compass, Moon, Sun } from "lucide-react";
+import {
+  BarChart3,
+  BriefcaseBusiness,
+  Cloud,
+  CloudOff,
+  Compass,
+  Menu,
+  Moon,
+  Sun,
+} from "lucide-react";
 import {
   DEFAULT_SETTINGS,
   defaultHealthProfile,
@@ -13,6 +22,8 @@ import { addDays, isoWeek, klNow, prettyDate } from "./lib/date";
 import { dayScore, morningProgress } from "./lib/score";
 import {
   daysSinceExport,
+  loadBusinessChat,
+  loadBusinessKnowledge,
   loadDay,
   loadCode,
   loadDeals,
@@ -21,6 +32,8 @@ import {
   loadTrainingPlan,
   loadWeek,
   saveDay,
+  saveBusinessChat,
+  saveBusinessKnowledge,
   saveCode,
   saveDeals,
   saveHealthProfile,
@@ -32,26 +45,24 @@ import Today from "./components/Today";
 import Deals, { dealStatus } from "./components/Deals";
 import Overview from "./components/Overview";
 import More from "./components/More";
-import Code from "./components/Code";
 import LockScreen from "./components/LockScreen";
 import PrintSheet from "./components/PrintSheet";
 import { hasLock, isUnlockedThisSession } from "./lib/lock";
 import { cloudConfigured, currentUser, subscribeCloudChanges, syncAll } from "./lib/cloud";
 import { defaultCodeState, migrateCodeState } from "./lib/code";
+import { emptyBusinessKnowledge, migrateBusinessChat, migrateBusinessKnowledge } from "./lib/business";
 
 const NAV = [
-  ["today", "Сегодня"],
-  ["deals", "Сделки"],
-  ["review", "Обзор"],
-  ["code", "Код"],
-  ["more", "Ещё"],
+  ["today", "Сегодня", Compass],
+  ["deals", "Сделки", BriefcaseBusiness],
+  ["review", "Обзор", BarChart3],
+  ["more", "Ещё", Menu],
 ];
 
 const PAGE_TITLES = {
   today: "Сегодня",
   deals: "Сделки",
   review: "Обзор исполнения",
-  code: "КОД",
   more: "Система",
 };
 
@@ -78,13 +89,15 @@ function dayKicker(date, today) {
 }
 
 async function loadWorkspaceSnapshot(date) {
-  const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, rawCode, previousReview] = await Promise.all([
+  const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, rawCode, rawBusinessKnowledge, rawBusinessChat, previousReview] = await Promise.all([
     loadDay(date),
     loadSettings(),
     loadDeals(),
     loadHealthProfile(),
     loadTrainingPlan(),
     loadCode(),
+    loadBusinessKnowledge(),
+    loadBusinessChat(),
     loadWeek(isoWeek(addDays(date, -7))),
   ]);
   const nextSettings = {
@@ -99,6 +112,8 @@ async function loadWorkspaceSnapshot(date) {
     healthProfile: migrateHealthProfile(rawProfile, nextSettings),
     trainingPlan: migrateTrainingPlan(rawPlan),
     code: migrateCodeState(rawCode),
+    businessKnowledge: migrateBusinessKnowledge(rawBusinessKnowledge),
+    businessChat: migrateBusinessChat(rawBusinessChat),
     northStar: previousReview?.nextWeek?.trim() || "",
   };
 }
@@ -115,6 +130,8 @@ export default function App() {
   const [healthProfile, setHealthProfile] = useState(defaultHealthProfile());
   const [trainingPlan, setTrainingPlan] = useState(defaultTrainingPlan());
   const [code, setCode] = useState(defaultCodeState());
+  const [businessKnowledge, setBusinessKnowledge] = useState(emptyBusinessKnowledge());
+  const [businessChat, setBusinessChat] = useState([]);
   const [northStar, setNorthStar] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [loadedDate, setLoadedDate] = useState("");
@@ -145,6 +162,8 @@ export default function App() {
     setHealthProfile(snapshot.healthProfile);
     setTrainingPlan(snapshot.trainingPlan);
     setCode(snapshot.code);
+    setBusinessKnowledge(snapshot.businessKnowledge);
+    setBusinessChat(snapshot.businessChat);
     setNorthStar(snapshot.northStar);
     return true;
   }, []);
@@ -365,6 +384,24 @@ export default function App() {
     });
   }, []);
 
+  const updateBusinessKnowledge = useCallback((nextOrPatch) => {
+    setBusinessKnowledge((previous) => {
+      const candidate = typeof nextOrPatch === "function" ? nextOrPatch(previous) : nextOrPatch;
+      const next = migrateBusinessKnowledge(candidate);
+      saveBusinessKnowledge(next);
+      return next;
+    });
+  }, []);
+
+  const updateBusinessChat = useCallback((nextOrPatch) => {
+    setBusinessChat((previous) => {
+      const candidate = typeof nextOrPatch === "function" ? nextOrPatch(previous) : nextOrPatch;
+      const next = migrateBusinessChat(candidate);
+      saveBusinessChat(next);
+      return next;
+    });
+  }, []);
+
   const { pts, max } = dayScore(s);
   const morning = morningProgress(s);
   const dealsAttention = deals.filter((deal) => ["overdue", "today", "nostep"].includes(dealStatus(deal, now.date).kind)).length;
@@ -372,8 +409,7 @@ export default function App() {
     today: s.dayStarted ? pts : `${morning.done}/${morning.max}`,
     deals: dealsAttention || "",
     review: "",
-    code: code.onboardingComplete ? "" : "!",
-    more: daysSinceExport() >= 7 ? "!" : "",
+    more: !code.onboardingComplete || daysSinceExport() >= 7 ? "!" : "",
   };
 
   const navigate = (nextTab) => {
@@ -383,6 +419,11 @@ export default function App() {
 
   const openCloudSettings = () => {
     setMoreInitialView("settings");
+    setTab("more");
+  };
+
+  const openMore = (view) => {
+    setMoreInitialView(view);
     setTab("more");
   };
 
@@ -404,7 +445,7 @@ export default function App() {
             <span className="brand-wordmark">DALER <b>OS</b></span>
           </button>
           <nav aria-label="Основная навигация">
-            {NAV.map(([key, label]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => navigate(key)}><span>{label}</span>{navBadge[key] !== "" && <b>{navBadge[key]}</b>}</button>)}
+            {NAV.map(([key, label, Icon]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => navigate(key)}><span><Icon size={17} aria-hidden="true" />{label}</span>{navBadge[key] !== "" && <b>{navBadge[key]}</b>}</button>)}
           </nav>
           <p>Спокойный разум.<br />Ясные решения.<br />Быстрое исполнение.</p>
         </aside>
@@ -416,7 +457,7 @@ export default function App() {
                 <Compass size={16} strokeWidth={1.8} aria-hidden="true" />
                 <span>DALER <b>OS</b></span>
               </button>
-              <span className="kicker">{tab === "today" ? dayKicker(date, now.date) : "DALER OS"} · Kuala Lumpur</span>
+              <span className="kicker">{tab === "today" ? dayKicker(date, now.date) : "DALER OS"} · Куала-Лумпур</span>
               <h1>{tab === "today" ? prettyDate(date) : PAGE_TITLES[tab]}</h1>
               {tab !== "today" && <span className="header-date">{prettyDate(date)}</span>}
             </div>
@@ -425,27 +466,28 @@ export default function App() {
                 <button type="button" className={settings.theme !== "light" ? "active" : ""} aria-pressed={settings.theme !== "light"} aria-label="Тёмная тема" title="Тёмная тема" onClick={() => upSettings({ theme: "dark" })}><Moon size={15} aria-hidden="true" /></button>
                 <button type="button" className={settings.theme === "light" ? "active" : ""} aria-pressed={settings.theme === "light"} aria-label="Светлая тема" title="Светлая тема" onClick={() => upSettings({ theme: "light" })}><Sun size={15} aria-hidden="true" /></button>
               </div>
-              <button type="button" className={`sync-pill${cloudStatus === "online" ? "" : " local"}`} onClick={openCloudSettings}>
-                <i />{saveState || syncNote || (cloudStatus === "online" ? "облако подключено" : cloudStatus === "signed_out" ? "облако: нужен вход" : "только локально")}
+              <button
+                type="button"
+                className={`sync-pill${cloudStatus === "online" ? "" : " local"}`}
+                onClick={openCloudSettings}
+                aria-label={cloudStatus === "online" ? "Облако подключено" : "Открыть настройки синхронизации"}
+                title={saveState || syncNote || (cloudStatus === "online" ? "Облако подключено" : "Настроить синхронизацию")}
+              >
+                {cloudStatus === "online" ? <Cloud size={15} aria-hidden="true" /> : <CloudOff size={15} aria-hidden="true" />}
+                <span>{saveState || syncNote || (cloudStatus === "online" ? "облако подключено" : cloudStatus === "signed_out" ? "нужен вход" : "только локально")}</span>
               </button>
               <button type="button" className="score-pill" aria-label={`Баланс дня ${pts} из ${max}`}><strong>{pts}</strong><span>/ {max}</span></button>
             </div>
           </header>
 
-          {cloudStatus !== "online" && <button type="button" className="mobile-cloud-warning" onClick={openCloudSettings}>
-            <CloudOff size={16} aria-hidden="true" />
-            <span><strong>{cloudStatus === "signed_out" ? "Войдите для синхронизации" : "Синхронизация выключена"}</strong><small>Данные сейчас остаются только на этом устройстве</small></span>
-          </button>}
-
-          {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} today={now.date} setDate={selectDate} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} code={code} updateCode={updateCode} openCode={() => setTab("code")} />}
+          {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} today={now.date} setDate={selectDate} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} onOpenForecast={() => openMore("forecast")} onOpenDevelopment={() => openMore("development")} onOpenHealth={() => openMore("health")} />}
           {tab === "deals" && <div className="standard-page"><Deals deals={deals} setDeals={setDeals} today={now.date} /></div>}
           {tab === "review" && <div className="standard-page"><Overview date={date} setDate={selectDate} today={now.date} sub={reviewView} setSub={setReviewView} /></div>}
-          {tab === "code" && <div className="standard-page"><Code code={code} updateCode={updateCode} date={date} tasks={s.dailyProtocol.work.tasks || []} updateTask={(id, patch) => up((previous) => ({ dailyProtocol: { ...previous.dailyProtocol, work: { ...previous.dailyProtocol.work, tasks: (previous.dailyProtocol.work.tasks || []).map((task) => task.id === id ? { ...task, ...patch } : task) } } }))} /></div>}
-          {tab === "more" && <div className="standard-page"><More initialView={moreInitialView} s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} onLock={() => setLocked(true)} /></div>}
+          {tab === "more" && <div className="standard-page"><More initialView={moreInitialView} s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} code={code} updateCode={updateCode} businessKnowledge={businessKnowledge} updateBusinessKnowledge={updateBusinessKnowledge} businessChat={businessChat} updateBusinessChat={updateBusinessChat} northStar={northStar} onLock={() => setLocked(true)} /></div>}
         </main>
 
         <nav className="mobile-bottom-nav" aria-label="Основная навигация">
-          {NAV.map(([key, label]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => navigate(key)}><span>{label}</span>{navBadge[key] !== "" && <b>{navBadge[key]}</b>}</button>)}
+          {NAV.map(([key, label, Icon]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => navigate(key)}><Icon size={19} aria-hidden="true" /><span>{label}</span>{navBadge[key] !== "" && <b>{navBadge[key]}</b>}</button>)}
         </nav>
       </div>
     </>

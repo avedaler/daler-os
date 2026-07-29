@@ -67,11 +67,11 @@ const DAY_LABELS = {
   friday: "Пятница", saturday: "Суббота", sunday: "Воскресенье",
 };
 const SESSION_LABELS = {
-  strength: "Силовая", swim: "Плавание / Zone 2", recovery: "Восстановление", rest: "Отдых / семья",
+  strength: "Силовая", swim: "Плавание / аэробная зона 2", recovery: "Восстановление", rest: "Отдых / семья",
 };
 const FOCUS_LABELS = {
   shoulders_arms: "Плечи + руки", zone2_technique: "Аэробная работа и техника", chest_back: "Грудь + спина",
-  walk_mobility: "Ходьба + mobility", legs_core: "Ноги + core", zone2: "Спокойный аэробный объём", family_reset: "Прогулка и reset",
+  walk_mobility: "Ходьба + подвижность", legs_core: "Ноги + корпус", zone2: "Спокойный аэробный объём", family_reset: "Прогулка и перезагрузка",
   push: "Грудь · плечи · трицепс", pull: "Спина · бицепс", recovery_walk_swim: "Ходьба · плавание · растяжка",
   legs: "Ноги · ягодицы · пресс", upper_shape: "Верх тела · акцент на форму", active_recovery: "Ходьба или плавание · растяжка", rest: "Полный отдых",
 };
@@ -80,8 +80,8 @@ const EXERCISES = {
   chest_back: ["Горизонтальный жим", "Тяга к поясу", "Вертикальная тяга", "Fly / cable", "Задняя дельта"],
   legs_core: ["Присед / leg press", "Romanian deadlift", "Выпады", "Сгибание ног", "Plank / carry"],
   zone2_technique: ["Разминка", "Техника", "Спокойные отрезки", "Заминка"],
-  zone2: ["Разминка", "Zone 2", "Техника дыхания", "Заминка"],
-  walk_mobility: ["Ходьба", "Mobility", "Лёгкая разгрузка"],
+  zone2: ["Разминка", "Аэробная зона 2", "Техника дыхания", "Заминка"],
+  walk_mobility: ["Ходьба", "Подвижность", "Лёгкая разгрузка"],
   family_reset: ["Прогулка без обязательной тренировки"],
 };
 const SUPPLEMENT_GROUP_LABELS = {
@@ -112,7 +112,7 @@ function astroAdvice(date) {
   const astro = computeAstro(date);
   if (astro.cautions.some((item) => item.planet === "Меркурий")) return "Перепроверь redlines, цифры и письменные договорённости.";
   if (astro.cautions.some((item) => item.planet === "Марс")) return "Не отвечай импульсивно: сначала выясни мотив и ограничение.";
-  if (astro.retro.includes("Меркурий")) return "Зафиксируй owner, дату и следующий шаг письменно.";
+  if (astro.retro.includes("Меркурий")) return "Зафиксируй ответственного, дату и следующий шаг письменно.";
   if (astro.phaseAngle > 200) return "Закрывай хвосты и собирай подтверждения вместо новых историй.";
   if (astro.windows.length) return "Используй окно для переговоров, но решение опирай на факты.";
   return "Собери информацию и держи фактический приоритет выше контекста.";
@@ -149,7 +149,7 @@ export function DailyCompass({ s, up, date, today, northStar, deals, yesterdayOu
   const [editingState, setEditingState] = useState(!protocol.compass.stateBand);
   const dueDeal = deals.find((deal) => ["overdue", "today"].includes(dealStatus(deal, date).kind) && deal.nextStep);
   const suggestions = [
-    northStar && { label: `North Star: ${northStar}`, text: northStar, source: "north-star" },
+    northStar && { label: `Главный ориентир: ${northStar}`, text: northStar, source: "north-star" },
     dueDeal && { label: `${dueDeal.name}: ${dueDeal.nextStep}`, text: `${dueDeal.name}: ${dueDeal.nextStep}`, source: "deal", dealId: dueDeal.id },
     yesterdayOutcome && { label: `Вчера не завершено: ${yesterdayOutcome}`, text: yesterdayOutcome, source: "yesterday" },
   ].filter(Boolean);
@@ -323,7 +323,7 @@ export function MorningColumn({ s, up, profile, date, active, bare = false, guid
       <details className="column-details">
         <summary>После первого приема пищи</summary>
         <div className="detail-stack">
-          <p className="quiet-copy">Завтрак пропущен. Этот stack привязан к первому приему пищи, а не к фиксированному утреннему времени.</p>
+          <p className="quiet-copy">Завтрак пропущен. Эта схема добавок привязана к первому приёму пищи, а не к фиксированному утреннему времени.</p>
           <SupplementChecklist profile={profile} morning={morning} updateMorning={updateMorning} timings="after_first_meal" />
           <ConditionalProteinCard profile={profile} morning={morning} updateMorning={updateMorning} hasTraining={hasTraining} />
         </div>
@@ -554,7 +554,7 @@ export function MeetingPrepSheet({ value, onChange, onClose }) {
       <Field label="Три главных вопроса" value={prep.questions} onChange={(questions) => set({ questions })} rows={2} />
       <Field label="Минимально приемлемый результат" value={prep.minimum} onChange={(minimum) => set({ minimum })} />
       <div className="form-grid three"><Field label="Следующий шаг" value={prep.nextAction} onChange={(nextAction) => set({ nextAction })} /><Field label="Ответственный" value={prep.owner} onChange={(owner) => set({ owner })} /><Field label="Дата" type="date" value={prep.date} onChange={(date) => set({ date })} /></div>
-      <p className="quiet-copy">Движение фиксируется только после next action + ответственный + дата.</p>
+      <p className="quiet-copy">Движение фиксируется только после следующего шага, ответственного и даты.</p>
     </div>
   );
 }
@@ -578,7 +578,7 @@ export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, b
       <DeepWorkLauncher work={work} updateWork={updateWork} outcome={text} />
       <WorkPriorityStack deals={deals} setDeals={setDeals} today={today} northStar={northStar} work={work} updateWork={updateWork} compact={bare} />
       {(outcome.chairmanOnly || chairman.length > 0) && <Section kicker="Только Далер" title="Действия личного уровня" className="nested-section">
-        {outcome.chairmanOnly && <ActionRow title={text || "Главный результат"} meta="Личное решение / closing"><Btn onClick={() => updateOutcome({ status: "done" })}>Готово</Btn></ActionRow>}
+        {outcome.chairmanOnly && <ActionRow title={text || "Главный результат"} meta="Личное решение / закрытие"><Btn onClick={() => updateOutcome({ status: "done" })}>Готово</Btn></ActionRow>}
         {chairman.map((deal) => <ActionRow key={deal.id} title={deal.nextStep || deal.name} meta={`${deal.name}${deal.nextDate ? ` · ${deal.nextDate}` : ""}`}><Btn onClick={() => setDeals(deals.map((item) => item.id === deal.id ? { ...item, movementCount: (item.movementCount || 0) + 1 } : item))}>Готово</Btn></ActionRow>)}
       </Section>}
       {bare ? <div className="work-tools command-work-tools">
@@ -610,8 +610,8 @@ export function EveningShutdownSheet({ s, up, deals, profile, active, bare = fal
   const movedDeal = deals.find((deal) => (deal.movementCount || 0) > 0);
   const suggestedWin = outcome.status === "done" ? primaryOutcomeText(outcome) : movedDeal ? `${movedDeal.name}: движение зафиксировано` : s.artifactType ? `Артефакт: ${s.artifactType}` : "";
   const registryItems = [
-    ["dealRegisterUpdated", "Deal Register обновлён"],
-    ["recoveryRegisterUpdated", "Recovery Register обновлён"],
+    ["dealRegisterUpdated", "Реестр сделок обновлён"],
+    ["recoveryRegisterUpdated", "Реестр восстановления обновлён"],
     ["materialsClosed", "Материалы закрыты"],
   ];
   const complete = evening.shutdown;
@@ -700,17 +700,14 @@ function TodayHealthRail({ s, profile, setPhase }) {
   </section>;
 }
 
-function CommandRail({ s, up, date, profile, setPhase, phase }) {
-  const [open, setOpen] = useState(phase === "morning");
-  useEffect(() => {
-    if (phase === "morning") setOpen(true);
-  }, [phase]);
+function CommandRail({ s, up, date, profile, setPhase, phase, onOpenForecast, onOpenDevelopment, onOpenHealth }) {
+  const [open, setOpen] = useState(true);
   return <aside className={`command-rail${open ? " open" : ""}${phase === "morning" ? " morning-horoscope" : ""}`}>
     <button type="button" className="command-rail-toggle" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
       <span><span className="eyebrow">{phase === "morning" ? "Гороскопы" : "Сводка дня"}</span><strong>{phase === "morning" ? "Личный день, Луна, окна и риски" : "Контекст, здоровье, развитие"}</strong></span><ChevronDown size={18} aria-hidden="true" />
     </button>
     <div className="command-rail-content">
-      <TodayForecast date={date} compact />
+      <TodayForecast date={date} compact onOpen={onOpenForecast} />
       {phase === "morning" ? <section className="command-rail-section morning-horoscope-focus">
         <div className="command-rail-heading"><span className="eyebrow">Фокус утра</span><StatusBadge tone="gold">ориентир</StatusBadge></div>
         <p>{astroAdvice(date)}</p>
@@ -718,10 +715,14 @@ function CommandRail({ s, up, date, profile, setPhase, phase }) {
       </section> : <>
         <TodayHealthRail s={s} profile={profile} setPhase={setPhase} />
         <section className="command-rail-section">
-          <div className="command-rail-heading"><span className="eyebrow">Развитие</span><StatusBadge tone="neutral">сегодня</StatusBadge></div>
+          <div className="command-rail-heading"><span className="eyebrow">Развитие</span><button type="button" className="rail-link" onClick={onOpenDevelopment}>Открыть</button></div>
           <Development s={s} up={up} date={date} rail />
         </section>
       </>}
+      <div className="command-context-actions">
+        <button type="button" onClick={onOpenHealth}>Схема здоровья</button>
+        <button type="button" onClick={onOpenDevelopment}>ИИ по развитию</button>
+      </div>
     </div>
   </aside>;
 }
@@ -769,7 +770,7 @@ function FullRitualPrompt({ s, up }) {
   </>;
 }
 
-export function DailyColumnsGrid({ s, up, date, deals, setDeals, northStar, profile, plan, updatePlan, phase, setPhase }) {
+export function DailyColumnsGrid({ s, up, date, deals, setDeals, northStar, profile, plan, updatePlan, phase, setPhase, onOpenForecast, onOpenDevelopment, onOpenHealth }) {
   const counts = phaseCounts(s, profile, date, deals);
   const guidance = <FullRitualPrompt s={s} up={up} />;
   return (
@@ -782,7 +783,7 @@ export function DailyColumnsGrid({ s, up, date, deals, setDeals, northStar, prof
           {phase === "work" && <WorkColumn s={s} up={up} deals={deals} setDeals={setDeals} today={date} northStar={northStar} active bare guidance={guidance} />}
           {phase === "evening" && <EveningShutdownSheet s={s} up={up} deals={deals} profile={profile} active bare guidance={guidance} />}
         </div>
-        <CommandRail s={s} up={up} date={date} profile={profile} setPhase={setPhase} phase={phase} />
+        <CommandRail s={s} up={up} date={date} profile={profile} setPhase={setPhase} phase={phase} onOpenForecast={onOpenForecast} onOpenDevelopment={onOpenDevelopment} onOpenHealth={onOpenHealth} />
       </div>
       {phase !== "evening" && <button type="button" className="evening-next-strip" onClick={() => setPhase("evening")}>
         <Moon size={23} aria-hidden="true" /><span><small className="eyebrow">Вечер · следующий шаг</small><strong>{s.dailyProtocol.evening.shutdown ? "Рабочий день закрыт" : "Закрыть день за 60–90 секунд"}</strong></span><span>Открыть <ArrowRight size={17} aria-hidden="true" /></span>

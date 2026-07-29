@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/verify-migrations.mjs"
+    "test": "node scripts/verify-migrations.mjs && node scripts/verify-youtube.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
@@ -15,7 +15,8 @@
     "idb-keyval": "^6.2.1",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "youtube-transcript": "^1.3.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

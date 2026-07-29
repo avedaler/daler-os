@@ -61,7 +61,7 @@ export async function exportMonth(ym) {
   for (const w of [...weeks].sort()) {
     const r = await loadWeek(w);
     if (!r) continue;
-    lines.push(`## CEO-review · ${w}`);
+    lines.push(`## Разбор руководителя · ${w}`);
     if (r.facts) lines.push(`**Факты (цифры недели):** ${r.facts}`);
     if (r.gap) lines.push(`**Разрыв история/реальность:** ${r.gap}`);
     if (r.bottleneck) lines.push(`**Узкое место:** ${r.bottleneck}`);

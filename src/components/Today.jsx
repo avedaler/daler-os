@@ -5,7 +5,6 @@ import { addDays } from "../lib/date";
 import { loadDay } from "../lib/store";
 import { StatusBadge } from "./atoms";
 import { DailyColumnsGrid, DailyCompass } from "./DailyColumns";
-import { CodeDashboardCard } from "./Code";
 
 function phaseForTime(time) {
   const [hours, minutes] = time.split(":").map(Number);
@@ -58,9 +57,9 @@ export default function Today({
   healthProfile,
   trainingPlan,
   updateTrainingPlan,
-  code,
-  updateCode,
-  openCode,
+  onOpenForecast,
+  onOpenDevelopment,
+  onOpenHealth,
 }) {
   const [yesterdayOutcome, setYesterdayOutcome] = useState("");
   const [phase, setPhase] = useState(() => phaseForTime(time));
@@ -82,22 +81,6 @@ export default function Today({
   return (
     <div className="today-screen">
       <DaySwitcher date={date} today={today} setDate={setDate} started={s.dayStarted} />
-      <CodeDashboardCard
-        code={code}
-        updateCode={updateCode}
-        date={date}
-        tasks={s.dailyProtocol.work.tasks || []}
-        updateTask={(id, patch) => up((previous) => ({
-          dailyProtocol: {
-            ...previous.dailyProtocol,
-            work: {
-              ...previous.dailyProtocol.work,
-              tasks: (previous.dailyProtocol.work.tasks || []).map((task) => task.id === id ? { ...task, ...patch } : task),
-            },
-          },
-        }))}
-        onOpen={openCode}
-      />
       <DailyCompass s={s} up={up} date={date} today={today} northStar={northStar} deals={deals} yesterdayOutcome={yesterdayOutcome} onContinue={() => setPhase(date === today ? phaseForTime(time) : "morning")} />
       <DailyColumnsGrid
         s={s}
@@ -111,6 +94,9 @@ export default function Today({
         updatePlan={updateTrainingPlan}
         phase={phase}
         setPhase={setPhase}
+        onOpenForecast={onOpenForecast}
+        onOpenDevelopment={onOpenDevelopment}
+        onOpenHealth={onOpenHealth}
       />
     </div>
   );

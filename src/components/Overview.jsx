@@ -48,7 +48,7 @@ export default function Overview({ date, setDate, today, sub, setSub }) {
   const isFriday = weekday(date) === 5;
   const tabs = [
     ["week", "Неделя"],
-    ["ceo", isFriday ? "CEO-review · сегодня" : "CEO-review"],
+    ["ceo", isFriday ? "Разбор руководителя · сегодня" : "Разбор руководителя"],
     ["calendar", "Календарь"],
     ["archive", "Архив"],
   ];

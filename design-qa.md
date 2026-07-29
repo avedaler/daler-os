@@ -56,6 +56,51 @@ final result: passed
 
 ---
 
+# Business Knowledge Extension QA
+
+## Comparison Target
+
+- Source visual truth: `/Users/dalerave/.codex/generated_images/019f5da8-55e1-7a61-a35e-6a138a0ae6e5/call_CDd1b2c59Kxn2uI1YoAB0bcu.png`.
+- Browser-rendered implementation: `http://127.0.0.1:5173/`, More → Business Analysis.
+- Desktop screenshot: `design-qa-screenshots/business-desktop.jpg`.
+- Mobile screenshots: `design-qa-screenshots/business-mobile-top.jpg` and `design-qa-screenshots/business-mobile-chat.jpg`.
+- Combined comparison input: `design-qa-screenshots/business-mobile-comparison.jpg`.
+- Source pixels: 853 x 1844. The source was normalized to 390 x 844 for the comparison board.
+- Implementation pixels and CSS viewport: 390 x 844 mobile at density 1; 1440 x 1000 desktop at density 1.
+- State: dark theme, empty business knowledge library, source form open, chat empty.
+
+## Required Fidelity Surfaces
+
+- Typography: the established serif display, compact sans body, mono eyebrows, weights, line heights, and zero letter spacing match the approved executive hierarchy.
+- Spacing and layout: source ingestion, agent stages, library, and chat use the same 7-8 px radii, restrained dividers, stable input heights, and full-width working bands as the approved direction.
+- Colors and tokens: graphite surfaces, gold active states, neutral borders, and muted support text reuse the approved theme tokens without introducing a new color family.
+- Image and asset quality: this operational screen needs no raster imagery. Existing Lucide icons are used for source types and actions; no custom SVG or placeholder illustration was added.
+- Copy and content: all product copy is Russian except protected names and brands such as DALER OS and YouTube. The interface explicitly states that YouTube analysis uses subtitles and does not inspect the visual track.
+
+## Full-View And Focused Evidence
+
+- The combined board compares the approved mobile command-center language with the knowledge form and the focused business-chat state.
+- Focused mobile evidence confirms readable labels, a two-column source-type selector, composer clearance above fixed navigation, and no horizontal overflow.
+- Desktop evidence confirms the form and chat remain within the content column, with no clipped controls or nested cards.
+
+## Comparison History
+
+- Pass 1 [P2]: the fourth source type was partially off-screen at 390 px and depended on an undisclosed horizontal swipe.
+- Fix: source types now use a visible 2 x 2 mobile grid while desktop keeps one compact row.
+- Pass 2 evidence: `design-qa-screenshots/business-mobile-top.jpg` and the updated combined comparison show all four source types without clipping.
+- No actionable P0, P1, or P2 findings remain.
+
+## Interactions Verified
+
+- Opened More → Business Analysis on desktop and mobile.
+- Switched between Note and YouTube source types and confirmed the URL field changes to the YouTube state.
+- Verified the full source form, empty library, quick prompts, composer, fixed navigation, and Russian labels.
+- Verified the responsive page through browser DOM snapshots; no error boundary or broken runtime state was present.
+
+final result: passed
+
+---
+
 # Theme Extension QA
 
 **Comparison Target**

@@ -272,7 +272,7 @@ export default function Settings({ settings, upSettings, date, onLock }) {
   const rows = [
     ["notifyMorning", "morningTime", "Утренний ритуал"],
     ["notifyArchitect", "architectTime", "Час Архитектора"],
-    ["notifyShutdown", "shutdownTime", "Shutdown"],
+    ["notifyShutdown", "shutdownTime", "Закрытие дня"],
   ];
 
   return (
@@ -317,7 +317,7 @@ export default function Settings({ settings, upSettings, date, onLock }) {
         ))}
         <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
           Честно: это напоминания, пока приложение открыто или активно на home screen — push-сервера нет, данные не покидают устройство.
-          Для гарантированных сигналов продублируй Час Архитектора, пятничный CEO-review и shutdown в календаре телефона.
+          Для гарантированных сигналов продублируй Час Архитектора, пятничный разбор руководителя и закрытие дня в календаре телефона.
         </div>
       </Section>
 

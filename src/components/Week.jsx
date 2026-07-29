@@ -65,14 +65,16 @@ export default function Week({ date }) {
 
   return (
     <>
-      <Section kicker={`неделя ${isoWeek(date)} · пн–вс`} title="Недельный дашборд">
-        <div style={{ display: "flex", gap: 26, flexWrap: "wrap", marginBottom: 6 }}>
+      <Section kicker={`неделя ${isoWeek(date)} · пн–вс`} title="Недельный обзор">
+        <div className="week-kpi-grid">
           <Stat label="СРЕДНИЙ БАЛАНС" value={st.filled ? st.avg : "—"} color={verdict ? C[verdict.color] : C.muted} />
-          <Stat label="К ПРОШЛОЙ НЕДЕЛЕ" value={delta == null ? "—" : (delta >= 0 ? `+${delta}` : delta)} color={delta == null ? C.muted : delta >= 0 ? C.green : C.red} />
           <Stat label="ФАКТЫ-РЕЗУЛЬТАТЫ" value={`${st.proofs}/7`} color={st.proofs >= 5 ? C.green : C.gold} />
+          <Stat label="ЗАКРЫТИЕ ДНЯ" value={`${st.shutdowns}/7`} />
+        </div>
+        <div className="week-secondary-metrics">
+          <Stat label="К ПРОШЛОЙ НЕДЕЛЕ" value={delta == null ? "—" : (delta >= 0 ? `+${delta}` : delta)} color={delta == null ? C.muted : delta >= 0 ? C.green : C.red} />
           <Stat label="ЧАС АРХИТЕКТОРА" value={`${st.architect}/7`} />
           <Stat label="ТРЕНИРОВКИ" value={`${st.trainings}/7`} />
-          <Stat label="SHUTDOWN" value={`${st.shutdowns}/7`} />
         </div>
         {verdict && (
           <div style={{ display: "inline-block", fontSize: 13, color: C[verdict.color], border: `1px solid ${C[verdict.color]}`, borderRadius: 4, padding: "6px 12px", fontFamily: FONT.mono, marginTop: 6 }}>

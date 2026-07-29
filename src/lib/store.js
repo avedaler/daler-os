@@ -75,6 +75,22 @@ export async function saveCode(code) {
   await persist("code", code);
 }
 
+export async function loadBusinessKnowledge() {
+  return (await get("businessKnowledge")) || null;
+}
+
+export async function saveBusinessKnowledge(knowledge) {
+  await persist("businessKnowledge", knowledge);
+}
+
+export async function loadBusinessChat() {
+  return (await get("businessChat")) || [];
+}
+
+export async function saveBusinessChat(messages) {
+  await persist("businessChat", messages);
+}
+
 // Полный бэкап/восстановление: все ключи IndexedDB одним JSON-объектом
 export async function exportAllData() {
   const ks = await keys();

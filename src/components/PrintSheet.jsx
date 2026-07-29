@@ -100,7 +100,7 @@ export default function PrintSheet({ date, s, settings, deals, northStar }) {
       </div>
 
       <div className="rule" style={{ marginTop: "10pt" }} />
-      <div className="small">Signed → Paid → Live → Recurring · Разговор — не результат. Балл только за факт.</div>
+      <div className="small">Подписано → Оплачено → Запущено → Повторяется · Разговор — не результат. Балл только за факт.</div>
     </div>
   );
 }

@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { HOBBIES } from "../constants";
+import { HOBBIES, primaryOutcomeText } from "../constants";
 import { addDays } from "../lib/date";
 import { buildDayIcs, buildReminderText, buildRitualsIcs, downloadFile } from "../lib/ics";
 import { loadDay } from "../lib/store";
 import Forecast from "./Forecast";
 import Settings from "./Settings";
+import Code from "./Code";
+import AiChat from "./AiChat";
+import BusinessAdvisor from "./BusinessAdvisor";
 import { Btn, CheckRow, ChoiceChips, Field, Section, SettingsRow, StatusBadge } from "./atoms";
 
 function useStreaks(date) {
@@ -27,7 +30,7 @@ function useStreaks(date) {
   return streaks;
 }
 
-export function Development({ s, up, date, compact = false, rail = false }) {
+export function Development({ s, up, date, northStar = "", compact = false, rail = false }) {
   const setHabit = (patch) => up((previous) => ({ habits: { ...previous.habits, ...patch } }));
   const streaks = useStreaks(date);
   const habits = s.habits;
@@ -50,18 +53,53 @@ export function Development({ s, up, date, compact = false, rail = false }) {
     <div className="development-focus"><span className="eyebrow">Личный фокус</span><ChoiceChips options={HOBBIES} value={habits.hobby} onChange={(hobby) => setHabit({ hobby })} /></div>
   </Section>;
 
-  return <Section kicker="ежедневный учет" title="Личное развитие">
-    <div className="development-grid">{core}</div>
-    {habits.comfortExit && <Field label="Что именно" value={habits.comfortExit === "✓" ? "" : habits.comfortExit} onChange={(comfortExit) => setHabit({ comfortExit: comfortExit || "✓" })} />}
-    <CheckRow on={Boolean(habits.social)} onClick={() => setHabit({ social: habits.social ? "" : "✓" })} label="Встреча в высоких кругах" />
-    {habits.social && <Field label="С кем и следующий шаг" value={habits.social === "✓" ? "" : habits.social} onChange={(social) => setHabit({ social: social || "✓" })} />}
-    <div className="development-focus"><span className="eyebrow">Личный фокус</span><ChoiceChips options={HOBBIES} value={habits.hobby} onChange={(hobby) => setHabit({ hobby })} /></div>
-  </Section>;
+  const outcome = primaryOutcomeText(s.primaryOutcome);
+  const shareOptions = [
+    northStar && { id: "direction", label: "Направление", value: northStar },
+    outcome && { id: "outcome", label: "Фокус дня", value: `${outcome}; статус: ${s.primaryOutcome.status}` },
+    {
+      id: "habits",
+      label: "Привычки",
+      value: `без курения: ${habits.noSmoke ? "да" : "нет"}; без алкоголя: ${habits.noAlcohol ? "да" : "нет"}; логика: ${habits.logic ? "да" : "нет"}`,
+    },
+    (habits.comfortExit || habits.social || habits.hobby) && {
+      id: "reflection",
+      label: "Развитие сегодня",
+      value: [
+        habits.comfortExit && `выход из зоны комфорта: ${habits.comfortExit}`,
+        habits.social && `социальный шаг: ${habits.social}`,
+        habits.hobby && `личный фокус: ${habits.hobby}`,
+      ].filter(Boolean).join("; "),
+    },
+    s.dailyProtocol.evening.mainWin && { id: "result", label: "Итог дня", value: s.dailyProtocol.evening.mainWin },
+  ].filter(Boolean);
+
+  return <>
+    <Section kicker="ежедневный учёт" title="Личное развитие">
+      <div className="development-grid">{core}</div>
+      {habits.comfortExit && <Field label="Что именно" value={habits.comfortExit === "✓" ? "" : habits.comfortExit} onChange={(comfortExit) => setHabit({ comfortExit: comfortExit || "✓" })} />}
+      <CheckRow on={Boolean(habits.social)} onClick={() => setHabit({ social: habits.social ? "" : "✓" })} label="Встреча в высоких кругах" />
+      {habits.social && <Field label="С кем и следующий шаг" value={habits.social === "✓" ? "" : habits.social} onChange={(social) => setHabit({ social: social || "✓" })} />}
+      <div className="development-focus"><span className="eyebrow">Личный фокус</span><ChoiceChips options={HOBBIES} value={habits.hobby} onChange={(hobby) => setHabit({ hobby })} /></div>
+    </Section>
+    <AiChat
+      mode="development"
+      title="Диалог о личном развитии"
+      description="Разбери решение, привычку или повторяющийся паттерн. Контекст сделок и прогнозов сюда не подмешивается."
+      storageKey="daler-os-ai-development"
+      shareOptions={shareOptions}
+      quickPrompts={[
+        "Какой паттерн сегодня сильнее всего мешает исполнению?",
+        "Помоги выбрать один шаг для роста дисциплины.",
+        "Разбери моё решение без лести и общих слов.",
+      ]}
+    />
+  </>;
 }
 
 function ExportTools({ date, s, settings, deals }) {
   const [copyMsg, setCopyMsg] = useState("");
-  return <Section kicker="печать · календарь · reminders" title="Экспорт дня">
+  return <Section kicker="печать · календарь · напоминания" title="Экспорт дня">
     <div className="button-pair">
       <Btn primary onClick={() => window.print()}>Печать инструкции</Btn>
       <Btn onClick={() => downloadFile(`daler-os-${date}.ics`, buildDayIcs(date, s, settings, deals))}>День в календарь</Btn>
@@ -69,10 +107,10 @@ function ExportTools({ date, s, settings, deals }) {
       <Btn onClick={async () => {
         try {
           await navigator.clipboard.writeText(buildReminderText(date, s, settings, deals));
-          setCopyMsg("Скопировано для Apple Reminders");
+          setCopyMsg("Скопировано для Напоминаний Apple");
         } catch { setCopyMsg("Буфер недоступен"); }
         setTimeout(() => setCopyMsg(""), 5000);
-      }}>Скопировать для Reminders</Btn>
+      }}>Скопировать для Напоминаний Apple</Btn>
     </div>
     {copyMsg && <p className="success-copy">{copyMsg}</p>}
   </Section>;
@@ -102,7 +140,7 @@ function HealthProfileEditor({ profile, updateProfile }) {
   }));
   return <div className="profile-editor">
     <Section kicker="текущая схема" title="Ритм питания и воды">
-      <div className="profile-status"><StatusBadge tone="gold">завтрак пропущен</StatusBadge><span>Первый stack с едой привязан к первому приему пищи.</span></div>
+      <div className="profile-status"><StatusBadge tone="gold">завтрак пропущен</StatusBadge><span>Первая схема добавок с едой привязана к первому приёму пищи.</span></div>
       <div className="form-grid three">
         <Field label="Подъем" type="time" value={profile.wakeTime} onChange={(wakeTime) => updateProfile({ wakeTime })} />
         <Field label="Вода утром, мл" type="number" min="500" max="700" value={profile.morningWaterTargetMl} onChange={(value) => updateProfile({ morningWaterTargetMl: Math.max(500, Math.min(700, Number(value) || 500)) })} />
@@ -136,7 +174,7 @@ const TRAINING_DAYS = [
   ["friday", "Пятница"], ["saturday", "Суббота"], ["sunday", "Воскресенье"],
 ];
 const TRAINING_TYPES = [
-  { label: "Силовая", value: "strength" }, { label: "Плавание / Zone 2", value: "swim" },
+  { label: "Силовая", value: "strength" }, { label: "Плавание / аэробная зона 2", value: "swim" },
   { label: "Восстановление", value: "recovery" }, { label: "Отдых", value: "rest" },
 ];
 
@@ -194,22 +232,24 @@ function TrainingPlanEditor({ plan, updatePlan }) {
 }
 
 const MORE_GROUPS = [
-  ["Фокус", [["forecast", "Расчет дня и периода", "Луна, личный день, окна и риски"], ["development", "Развитие", "Привычки, серии и личный фокус"]]],
-  ["Режим", [["health", "Схема здоровья", "Mounjaro по средам и текущий stack"], ["training", "Тренировочная неделя", "Нагрузка, восстановление и замены"]]],
-  ["Данные и доступ", [["export", "Экспорт и печать", "Календарь, Reminders и инструкция"], ["settings", "Настройки", "Расписание, синхронизация и блокировка"]]],
+  ["Фокус", [["forecast", "Расчёт дня и периода", "Луна, личный день, окна, риски и ИИ-разбор"], ["development", "Развитие", "Привычки, серии и отдельный ИИ-диалог"], ["business", "Бизнес-анализ", "База знаний, навыки и решения с ИИ"], ["code", "Кодекс исполнения", "Принципы, протокол и доказательства"]]],
+  ["Режим", [["health", "Схема здоровья", "Mounjaro по средам и текущая схема добавок"], ["training", "Тренировочная неделя", "Нагрузка, восстановление и замены"]]],
+  ["Данные и доступ", [["export", "Экспорт и печать", "Календарь, Напоминания Apple и инструкция"], ["settings", "Настройки", "Расписание, синхронизация и блокировка"]]],
 ];
 
-export default function More({ initialView = "", s, up, date, today, deals, settings, upSettings, healthProfile, updateHealthProfile, trainingPlan, updateTrainingPlan, onLock }) {
+export default function More({ initialView = "", s, up, date, today, deals, settings, upSettings, healthProfile, updateHealthProfile, trainingPlan, updateTrainingPlan, code, updateCode, businessKnowledge, updateBusinessKnowledge, businessChat, updateBusinessChat, northStar, onLock }) {
   const [view, setView] = useState(initialView);
   useEffect(() => {
     if (initialView) setView(initialView);
   }, [initialView]);
   if (view) return <div className="more-detail">
     <button type="button" className="back-action" onClick={() => setView("")}>Назад к системе</button>
-    {view === "development" && <Development s={s} up={up} date={date} />}
+    {view === "development" && <Development s={s} up={up} date={date} northStar={northStar} />}
     {view === "health" && <HealthProfileEditor profile={healthProfile} updateProfile={updateHealthProfile} />}
     {view === "training" && <TrainingPlanEditor plan={trainingPlan} updatePlan={updateTrainingPlan} />}
     {view === "forecast" && <Forecast today={today} />}
+    {view === "business" && <BusinessAdvisor knowledge={businessKnowledge} updateKnowledge={updateBusinessKnowledge} messages={businessChat} updateMessages={updateBusinessChat} />}
+    {view === "code" && <Code code={code} updateCode={updateCode} date={date} tasks={s.dailyProtocol.work.tasks || []} updateTask={(id, patch) => up((previous) => ({ dailyProtocol: { ...previous.dailyProtocol, work: { ...previous.dailyProtocol.work, tasks: (previous.dailyProtocol.work.tasks || []).map((task) => task.id === id ? { ...task, ...patch } : task) } } }))} />}
     {view === "export" && <ExportTools date={date} s={s} settings={settings} deals={deals} />}
     {view === "settings" && <Settings settings={settings} upSettings={upSettings} date={date} onLock={onLock} />}
   </div>;

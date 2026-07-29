@@ -66,7 +66,7 @@ export function buildDayIcs(iso, s, settings, deals) {
   }));
   ev.push(vevent({
     uid: `shutdown-${iso}`, iso, start: settings.shutdownTime || "21:30", minutes: 20,
-    title: "DALER OS · Shutdown",
+    title: "DALER OS · Закрытие дня",
     desc: "Результат, решение по незавершённому, одна победа и shutdown.",
   }));
   for (const d of deals.filter((d) => d.nextDate === iso && d.stage < 9)) {
@@ -92,8 +92,8 @@ export function buildRitualsIcs(iso, settings, days = 30) {
   return wrap([
     vevent({ uid: `r-morning-${iso}`, iso, start: settings.morningTime || "07:30", minutes: 20, title: "DALER OS · Утренний ритуал", desc: "Состояние, результат дня, «только Далер», одно «нет» — до телефона.", rrule: rr }),
     vevent({ uid: `r-architect-${iso}`, iso, start: settings.architectTime || "15:00", minutes: 60, title: "DALER OS · Час Архитектора", desc: "Неприкосновенно. Выход — артефакт.", rrule: rr }),
-    vevent({ uid: `r-shutdown-${iso}`, iso, start: settings.shutdownTime || "21:30", minutes: 20, title: "DALER OS · Shutdown", desc: "Результат, одна победа, регистры и shutdown.", rrule: rr }),
-    vevent({ uid: `r-ceo-${iso}`, iso, start: "17:00", minutes: 45, title: "DALER OS · CEO-review (пятница)", desc: "5 вопросов Master OS + North Star следующей недели.", rrule: `FREQ=WEEKLY;BYDAY=FR;COUNT=${Math.ceil(days / 7)}` }),
+    vevent({ uid: `r-shutdown-${iso}`, iso, start: settings.shutdownTime || "21:30", minutes: 20, title: "DALER OS · Закрытие дня", desc: "Результат, одна победа, регистры и закрытие дня.", rrule: rr }),
+    vevent({ uid: `r-ceo-${iso}`, iso, start: "17:00", minutes: 45, title: "DALER OS · Разбор руководителя (пятница)", desc: "5 вопросов системы и главный ориентир следующей недели.", rrule: `FREQ=WEEKLY;BYDAY=FR;COUNT=${Math.ceil(days / 7)}` }),
   ]);
 }
 
@@ -108,7 +108,7 @@ export function buildReminderText(iso, s, settings, deals) {
     L.push(`Сделка ${d.name}: ${d.nextStep || "двинуть стадию"}`);
   }
   L.push("Спорт: выполнить рекомендацию по готовности");
-  L.push(`Shutdown ${settings.shutdownTime || "21:30"}`);
+  L.push(`Закрытие дня ${settings.shutdownTime || "21:30"}`);
   return L.join("\n");
 }
 
