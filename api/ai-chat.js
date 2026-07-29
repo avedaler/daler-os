@@ -1,10 +1,10 @@
 import { generateText } from "ai";
 import { getYoutubeTranscript, parseYouTubeId } from "./_lib/youtube.js";
 
-const DEFAULT_MODEL = "zai/glm-4.6v-flash";
+const DEFAULT_MODEL = "perplexity/sonar";
 const MODEL_FALLBACKS = [
+  "zai/glm-4.6v-flash",
   "inclusionai/ling-3.0-flash-free",
-  "perplexity/sonar",
 ];
 const ALLOWED_MODES = new Set(["forecast", "development", "business"]);
 const MAX_MESSAGES = 12;
@@ -99,7 +99,9 @@ async function callGateway({ instructions, input, max_output_tokens, tag }) {
   try {
     const result = await generateText({
       model: process.env.AI_CHAT_MODEL || DEFAULT_MODEL,
-      system: instructions,
+      system: `${instructions}
+
+КРИТИЧЕСКОЕ ПРАВИЛО ФОРМАТА: не показывай внутренние рассуждения, анализ запроса, план ответа, проверку инструкций или черновик. Выводи только готовый ответ пользователю и только на русском языке.`,
       messages: input,
       maxOutputTokens: max_output_tokens,
       providerOptions: {
