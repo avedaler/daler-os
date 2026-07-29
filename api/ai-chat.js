@@ -3,7 +3,9 @@ import { getYoutubeTranscript, parseYouTubeId } from "./_lib/youtube.js";
 
 const DEFAULT_MODEL = "perplexity/sonar";
 const MODEL_FALLBACKS = [
+  "perplexity/sonar-pro",
   "zai/glm-4.6v-flash",
+  "poolside/laguna-s-2.1-free",
   "inclusionai/ling-3.0-flash-free",
 ];
 const ALLOWED_MODES = new Set(["forecast", "development", "business"]);
@@ -65,9 +67,21 @@ function cleanGeneratedText(value) {
     throw new Error("ИИ вернул служебный анализ вместо готового ответа");
   }
   return text
-    .replace(/\[(?:\d+(?:\s*,\s*\d+)*)\]/g, "")
+    .replace(/(?:\[(?:\d+(?:\s*,\s*\d+)*|context|source|источник)\]|【\d+】)/gi, "")
     .replace(/[ \t]+(\r?\n)/g, "$1")
     .trim();
+}
+
+function gatewayErrorDetails(error) {
+  return [
+    error?.message,
+    error?.responseBody,
+    error?.data?.error?.message,
+    error?.data?.message,
+    error?.lastError?.message,
+    error?.lastError?.responseBody,
+    ...(Array.isArray(error?.errors) ? error.errors.flatMap((item) => [item?.message, item?.responseBody]) : []),
+  ].filter(Boolean).join(" | ");
 }
 
 function parseKnowledge(text) {
@@ -107,50 +121,52 @@ ${videoSource.transcript}
 }
 
 async function callGateway({ instructions, input, max_output_tokens, tag }) {
-  try {
-    const result = await generateText({
-      model: process.env.AI_CHAT_MODEL || DEFAULT_MODEL,
-      system: `${instructions}
+  const models = [...new Set([process.env.AI_CHAT_MODEL || DEFAULT_MODEL, ...MODEL_FALLBACKS])];
+  const failures = [];
+
+  for (const model of models) {
+    try {
+      const result = await generateText({
+        model,
+        system: `${instructions}
 
 КРИТИЧЕСКОЕ ПРАВИЛО ФОРМАТА: не показывай внутренние рассуждения, анализ запроса, план ответа, проверку инструкций или черновик. Выводи только готовый ответ пользователю и только на русском языке.`,
-      messages: input,
-      maxOutputTokens: max_output_tokens,
-      providerOptions: {
-        gateway: {
-          tags: ["daler-os", tag || "chat"],
-          models: MODEL_FALLBACKS,
+        messages: input,
+        maxOutputTokens: max_output_tokens,
+        maxRetries: 0,
+        providerOptions: {
+          gateway: {
+            tags: ["daler-os", tag || "chat", model],
+          },
         },
-      },
-    });
-    const text = cleanGeneratedText(result.text);
-    if (!text) throw new Error("ИИ не смог подготовить ответ");
-    return text;
-  } catch (error) {
-    const details = [
-      error?.message,
-      error?.responseBody,
-      error?.data?.error?.message,
-      error?.data?.message,
-      error?.lastError?.message,
-      error?.lastError?.responseBody,
-      ...(Array.isArray(error?.errors) ? error.errors.flatMap((item) => [item?.message, item?.responseBody]) : []),
-    ].filter(Boolean).join(" | ");
-    console.error(
-      "AI Gateway request failed",
-      error?.statusCode || "unknown",
-      error?.name || "Error",
-      details.replace(/\s+/g, " ").slice(0, 800)
-    );
-    const wrapped = new Error(
-      /credit card|free credits|payment required/i.test(details)
-        ? "ИИ временно недоступен: в Vercel нужно активировать кредиты AI Gateway"
-        : /rate limit|too many requests/i.test(details)
-          ? "Лимит запросов ИИ временно исчерпан"
-          : "ИИ не смог подготовить ответ"
-    );
-    wrapped.statusCode = /credit card|free credits|payment required/i.test(details) ? 503 : error?.statusCode === 429 ? 429 : 502;
-    throw wrapped;
+      });
+      const text = cleanGeneratedText(result.text);
+      if (!text) throw new Error("ИИ не смог подготовить ответ");
+      return text;
+    } catch (error) {
+      const details = gatewayErrorDetails(error);
+      failures.push({ error, details, model });
+      console.error(
+        "AI Gateway model failed",
+        model,
+        error?.statusCode || "unknown",
+        error?.name || "Error",
+        details.replace(/\s+/g, " ").slice(0, 800)
+      );
+    }
   }
+
+  const details = failures.map((failure) => failure.details).join(" | ");
+  const lastError = failures.at(-1)?.error;
+  const wrapped = new Error(
+    /credit card|free credits|payment required/i.test(details)
+      ? "ИИ временно недоступен: в Vercel нужно активировать кредиты AI Gateway"
+      : /rate[- ]?limit|too many requests/i.test(details)
+        ? "Лимит запросов ИИ временно исчерпан"
+        : "ИИ не смог подготовить ответ"
+  );
+  wrapped.statusCode = /credit card|free credits|payment required/i.test(details) ? 503 : lastError?.statusCode === 429 ? 429 : 502;
+  throw wrapped;
 }
 
 async function ingestResource(body) {
