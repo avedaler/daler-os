@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { getYoutubeTranscript, parseYouTubeId } from "./_lib/youtube.js";
 
-const DEFAULT_MODEL = "openai/gpt-5.4";
+const DEFAULT_MODEL = "inclusionai/ling-3.0-flash-free";
 const ALLOWED_MODES = new Set(["forecast", "development", "business"]);
 const MAX_MESSAGES = 12;
 const MAX_MESSAGE_LENGTH = 4000;
