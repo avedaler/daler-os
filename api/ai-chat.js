@@ -92,19 +92,33 @@ ${videoSource.transcript}
 }
 
 async function callGateway({ instructions, input, max_output_tokens, tag }) {
-  const result = await generateText({
-    model: process.env.AI_CHAT_MODEL || DEFAULT_MODEL,
-    system: instructions,
-    messages: input,
-    maxOutputTokens: max_output_tokens,
-    providerOptions: {
-      gateway: {
-        tags: ["daler-os", tag || "chat"],
+  try {
+    const result = await generateText({
+      model: process.env.AI_CHAT_MODEL || DEFAULT_MODEL,
+      system: instructions,
+      messages: input,
+      maxOutputTokens: max_output_tokens,
+      providerOptions: {
+        gateway: {
+          tags: ["daler-os", tag || "chat"],
+        },
       },
-    },
-  });
-  if (!result.text?.trim()) throw new Error("ИИ не смог подготовить ответ");
-  return result.text.trim();
+    });
+    if (!result.text?.trim()) throw new Error("ИИ не смог подготовить ответ");
+    return result.text.trim();
+  } catch (error) {
+    const details = String(error?.message || "");
+    console.error("AI Gateway request failed", error?.statusCode || "unknown", error?.name || "Error");
+    const wrapped = new Error(
+      /credit card|free credits|payment required/i.test(details)
+        ? "ИИ временно недоступен: в Vercel нужно активировать кредиты AI Gateway"
+        : /rate limit|too many requests/i.test(details)
+          ? "Лимит запросов ИИ временно исчерпан"
+          : "ИИ не смог подготовить ответ"
+    );
+    wrapped.statusCode = /credit card|free credits|payment required/i.test(details) ? 503 : error?.statusCode === 429 ? 429 : 502;
+    throw wrapped;
+  }
 }
 
 async function ingestResource(body) {
@@ -216,6 +230,6 @@ ${context || "Контекст не передан."}
     return response.status(200).json({ text, source: sourceMetadata(videoSource) });
   } catch (error) {
     console.error("AI request failed", error);
-    return response.status(502).json({ error: error.message || "Не удалось связаться с ИИ" });
+    return response.status(error.statusCode || 502).json({ error: error.message || "Не удалось связаться с ИИ" });
   }
 }
