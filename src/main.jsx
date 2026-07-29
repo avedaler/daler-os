@@ -4,6 +4,15 @@ import { registerSW } from "virtual:pwa-register";
 import "./styles.css";
 import App from "./App";
 
+if (navigator.serviceWorker?.controller) {
+  let reloadingForUpdate = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadingForUpdate) return;
+    reloadingForUpdate = true;
+    window.location.reload();
+  });
+}
+
 let updateSW = () => Promise.resolve();
 updateSW = registerSW({
   immediate: true,
