@@ -59,6 +59,17 @@ function cleanList(value) {
     : [];
 }
 
+function cleanGeneratedText(value) {
+  const text = String(value || "").trim();
+  if (/Analyze the Request|Deconstruct the|Drafting the Response|Check constraints|internal reasoning/i.test(text)) {
+    throw new Error("ИИ вернул служебный анализ вместо готового ответа");
+  }
+  return text
+    .replace(/\[(?:\d+(?:\s*,\s*\d+)*)\]/g, "")
+    .replace(/[ \t]+(\r?\n)/g, "$1")
+    .trim();
+}
+
 function parseKnowledge(text) {
   const withoutFences = String(text || "").replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   const start = withoutFences.indexOf("{");
@@ -111,8 +122,9 @@ async function callGateway({ instructions, input, max_output_tokens, tag }) {
         },
       },
     });
-    if (!result.text?.trim()) throw new Error("ИИ не смог подготовить ответ");
-    return result.text.trim();
+    const text = cleanGeneratedText(result.text);
+    if (!text) throw new Error("ИИ не смог подготовить ответ");
+    return text;
   } catch (error) {
     const details = [
       error?.message,
