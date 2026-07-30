@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import { getYoutubeTranscript, parseYouTubeId } from "./_lib/youtube.js";
+import { loadUserProviderKeys } from "./_lib/provider-keys.js";
 
 const DEFAULT_MODEL = "perplexity/sonar";
 const YOUTUBE_VIDEO_MODEL = "google/gemini-2.5-flash-lite";
@@ -91,10 +92,12 @@ function selectableModel(value) {
   return MODEL_ID_PATTERN.test(model) ? model : "";
 }
 
-function gatewayByok() {
+function gatewayByok(userKeys = {}) {
   const byok = {};
-  if (process.env.OPENAI_API_KEY) byok.openai = [{ apiKey: process.env.OPENAI_API_KEY }];
-  if (process.env.ANTHROPIC_API_KEY) byok.anthropic = [{ apiKey: process.env.ANTHROPIC_API_KEY }];
+  const openai = userKeys.openai || process.env.OPENAI_API_KEY;
+  const anthropic = userKeys.anthropic || process.env.ANTHROPIC_API_KEY;
+  if (openai) byok.openai = [{ apiKey: openai }];
+  if (anthropic) byok.anthropic = [{ apiKey: anthropic }];
   return byok;
 }
 
@@ -188,12 +191,12 @@ ${context || "Контекст не передан."}
 </context>`;
 }
 
-async function callGateway({ instructions, input, max_output_tokens, tag, requestedModel = "" }) {
+async function callGateway({ instructions, input, max_output_tokens, tag, requestedModel = "", providerKeys = {} }) {
   const models = requestedModel
     ? [requestedModel]
     : [...new Set([process.env.AI_CHAT_MODEL || DEFAULT_MODEL, ...MODEL_FALLBACKS])];
   const failures = [];
-  const byok = gatewayByok();
+  const byok = gatewayByok(providerKeys);
 
   for (const model of models) {
     try {
@@ -276,7 +279,7 @@ async function callYoutubeGateway({ instructions, input, max_output_tokens, tag,
   return text;
 }
 
-async function ingestResource(body) {
+async function ingestResource(body, providerKeys = {}) {
   const resource = body.resource && typeof body.resource === "object" ? body.resource : {};
   const type = ["book", "youtube", "article", "note"].includes(resource.type) ? resource.type : "note";
   const title = cleanText(resource.title, 240);
@@ -354,6 +357,7 @@ ${sourceContent}
     input,
     max_output_tokens: 1200,
     tag: "business-ingest",
+    providerKeys,
   });
   return {
     knowledge: parseKnowledge(generated.text),
@@ -388,10 +392,18 @@ export default async function handler(request, response) {
   if (!ALLOWED_MODES.has(mode)) return response.status(400).json({ error: "Неизвестный режим ИИ" });
   const requestedModel = body.model ? selectableModel(body.model) : "";
   if (body.model && !requestedModel) return response.status(400).json({ error: "Эта модель не разрешена" });
+  let providerKeys = {};
+  if (body.cloud) {
+    try {
+      providerKeys = await loadUserProviderKeys(body.cloud);
+    } catch (error) {
+      console.error("Personal AI keys unavailable", error?.message || error);
+    }
+  }
 
   if (mode === "business" && body.task === "ingest") {
     try {
-      const result = await ingestResource(body);
+      const result = await ingestResource(body, providerKeys);
       return response.status(200).json(result);
     } catch (error) {
       console.error("Knowledge ingestion failed", error);
@@ -455,6 +467,7 @@ export default async function handler(request, response) {
       max_output_tokens: mode === "business" ? 1000 : 700,
       tag: `${mode}-chat`,
       requestedModel,
+      providerKeys,
     });
     return response.status(200).json({ text: generated.text, model: generated.model, source: sourceMetadata(videoSource, "captions") });
   } catch (error) {

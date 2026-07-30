@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
+import { ExternalLink, Eye, EyeOff, KeyRound, Trash2 } from "lucide-react";
 import { C, FONT } from "../constants";
 import { Section, CheckRow, Btn } from "./atoms";
 import { askPermission } from "../lib/notify";
 import { exportMonth } from "../lib/export";
 import { exportAllData, importAllData, LAST_EXPORT_KEY, daysSinceExport } from "../lib/store";
 import { hasLock, setPin, verifyPin, clearLock, lockNow, hasBiometric, biometricAvailable, registerBiometric, disableBiometric } from "../lib/lock";
-import { getConfig, setConfig, cloudConfigured, currentUser, signUp, signIn, signOut, syncAll, lastSync, SETUP_SQL } from "../lib/cloud";
+import { aiCloudContext, getConfig, setConfig, cloudConfigured, currentUser, signUp, signIn, signOut, syncAll, lastSync, SETUP_SQL } from "../lib/cloud";
 
 function CloudSettings() {
   const [cfg, setCfg] = useState(getConfig());
@@ -125,6 +126,157 @@ function CloudSettings() {
         </>
       )}
       <div style={{ minHeight: 20, fontSize: 13, color: C.gold, fontFamily: FONT.mono, marginTop: 10 }}>{msg}</div>
+    </Section>
+  );
+}
+
+const AI_PROVIDERS = [
+  {
+    id: "openai",
+    name: "OpenAI · ChatGPT",
+    placeholder: "sk-…",
+    href: "https://platform.openai.com/api-keys",
+    linkLabel: "Создать ключ OpenAI",
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic · Claude",
+    placeholder: "sk-ant-…",
+    href: "https://console.anthropic.com/settings/keys",
+    linkLabel: "Создать ключ Anthropic",
+  },
+];
+
+function AiProviderSettings() {
+  const [cloudReady, setCloudReady] = useState(false);
+  const [connections, setConnections] = useState({ openai: false, anthropic: false });
+  const [keys, setKeys] = useState({ openai: "", anthropic: "" });
+  const [visible, setVisible] = useState({ openai: false, anthropic: false });
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const callConnections = async (action, provider = "", apiKey = "") => {
+    const cloud = await aiCloudContext();
+    setCloudReady(Boolean(cloud));
+    if (!cloud) throw new Error("Сначала подключи облако и войди в аккаунт DALER OS");
+    const response = await fetch("/api/ai-connections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, provider, apiKey, cloud }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.connections) throw new Error(payload.error || "Не удалось изменить подключение");
+    setConnections(payload.connections);
+    return payload.connections;
+  };
+
+  const refresh = async () => {
+    try {
+      await callConnections("status");
+      setMsg("");
+    } catch (error) {
+      setConnections({ openai: false, anthropic: false });
+      setMsg(error.message || "Подключения пока недоступны");
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+    window.addEventListener("daleros-cloud-status", refresh);
+    return () => window.removeEventListener("daleros-cloud-status", refresh);
+  }, []);
+
+  const save = async (provider) => {
+    const apiKey = keys[provider].trim();
+    if (!apiKey) return setMsg("Вставь API-ключ в поле");
+    setBusy(provider);
+    setMsg("");
+    try {
+      await callConnections("save", provider, apiKey);
+      setKeys((current) => ({ ...current, [provider]: "" }));
+      setVisible((current) => ({ ...current, [provider]: false }));
+      setMsg(`${AI_PROVIDERS.find((item) => item.id === provider)?.name}: ключ подключён`);
+    } catch (error) {
+      setMsg(error.message || "Не удалось сохранить ключ");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const remove = async (provider) => {
+    if (!confirm(`Удалить подключение ${AI_PROVIDERS.find((item) => item.id === provider)?.name}?`)) return;
+    setBusy(provider);
+    setMsg("");
+    try {
+      await callConnections("remove", provider);
+      setMsg("Подключение удалено. Чат снова использует Vercel Gateway");
+    } catch (error) {
+      setMsg(error.message || "Не удалось удалить подключение");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  return (
+    <Section kicker="ИИ · собственный биллинг" title="OpenAI и Claude">
+      <div className="ai-provider-intro">
+        <KeyRound size={18} aria-hidden="true" />
+        <p>
+          Платные подписки ChatGPT и Claude нельзя подключить через обычный вход. Нужны отдельные API-ключи с включённым биллингом провайдера.
+          Ключ шифруется на сервере и не сохраняется в браузере или истории чата.
+        </p>
+      </div>
+
+      {!cloudReady && <div className="ai-provider-warning">
+        Сначала подключи облако и войди выше. Это защищает ключи твоим аккаунтом и синхронизирует подключение между устройствами.
+      </div>}
+
+      <div className="ai-provider-list">
+        {AI_PROVIDERS.map((provider) => {
+          const connected = connections[provider.id];
+          return <div className="ai-provider-row" key={provider.id}>
+            <div className="ai-provider-head">
+              <span>
+                <strong>{provider.name}</strong>
+                <small className={connected ? "connected" : ""}>{connected ? "Собственный ключ подключён" : "Используется Vercel Gateway"}</small>
+              </span>
+              {connected && <button
+                type="button"
+                className="icon-button"
+                onClick={() => remove(provider.id)}
+                disabled={busy === provider.id}
+                aria-label={`Удалить ключ ${provider.name}`}
+                title="Удалить ключ"
+              ><Trash2 size={16} aria-hidden="true" /></button>}
+            </div>
+            <div className="ai-provider-field">
+              <input
+                type={visible[provider.id] ? "text" : "password"}
+                value={keys[provider.id]}
+                onChange={(event) => setKeys((current) => ({ ...current, [provider.id]: event.target.value }))}
+                placeholder={connected ? "Вставь новый ключ для замены" : provider.placeholder}
+                autoComplete="off"
+                spellCheck="false"
+                disabled={!cloudReady || busy === provider.id}
+                aria-label={`API-ключ ${provider.name}`}
+              />
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setVisible((current) => ({ ...current, [provider.id]: !current[provider.id] }))}
+                disabled={!keys[provider.id]}
+                aria-label={visible[provider.id] ? "Скрыть ключ" : "Показать ключ"}
+                title={visible[provider.id] ? "Скрыть ключ" : "Показать ключ"}
+              >{visible[provider.id] ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}</button>
+              <Btn primary onClick={() => save(provider.id)} disabled={!cloudReady || !keys[provider.id].trim() || busy === provider.id}>
+                {busy === provider.id ? "Сохраняю…" : connected ? "Заменить" : "Подключить"}
+              </Btn>
+            </div>
+            <a href={provider.href} target="_blank" rel="noreferrer">{provider.linkLabel} <ExternalLink size={13} aria-hidden="true" /></a>
+          </div>;
+        })}
+      </div>
+      <div className="ai-provider-message" role="status">{msg}</div>
     </Section>
   );
 }
@@ -278,6 +430,8 @@ export default function Settings({ settings, upSettings, date, onLock }) {
   return (
     <>
       <CloudSettings />
+
+      <AiProviderSettings />
 
       <LockSettings onLock={onLock} />
 

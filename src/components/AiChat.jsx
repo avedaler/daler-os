@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Check, ExternalLink, MessageCircle, Mic, MicOff, Pencil, Send, Trash2, Volume2, VolumeX, X } from "lucide-react";
+import { aiCloudContext } from "../lib/cloud";
 
 const MAX_SAVED_MESSAGES = 60;
 const MAX_SENT_MESSAGES = 12;
@@ -128,6 +129,26 @@ export default function AiChat({
   }, []);
 
   useEffect(() => {
+    let active = true;
+    aiCloudContext()
+      .then(async (cloud) => {
+        if (!cloud) return null;
+        const response = await fetch("/api/ai-connections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "status", cloud }),
+        });
+        return response.ok ? response.json() : null;
+      })
+      .then((payload) => {
+        if (!active || !payload?.connections) return;
+        setConnections((current) => ({ ...current, ...payload.connections }));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     if (mode !== "forecast" || !messages.some((message) => message.role === "assistant")) return;
     try {
       localStorage.setItem(LATEST_FORECAST_KEY, JSON.stringify({
@@ -222,6 +243,7 @@ export default function AiChat({
     setSending(true);
 
     try {
+      const cloud = await aiCloudContext();
       const response = await fetch("/api/ai-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -230,6 +252,7 @@ export default function AiChat({
           model: selectedModel,
           messages: nextMessages.slice(-MAX_SENT_MESSAGES),
           context: [context, sharedContext].filter(Boolean).join("\n\n"),
+          cloud,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -340,7 +363,7 @@ export default function AiChat({
         <details className="ai-connection">
           <summary>Подключение API</summary>
           <div>
-            <p>Подписки ChatGPT и Claude не включают API. Модели уже доступны через Vercel; собственные API-ключи подключают отдельный биллинг провайдера.</p>
+            <p>Подписки ChatGPT и Claude не включают API. Для собственного биллинга добавь отдельные ключи в «Ещё → Настройки → OpenAI и Claude».</p>
             <span>OpenAI: {connections.openai ? "собственный ключ подключён" : "через Vercel Gateway"}</span>
             <span>Anthropic: {connections.anthropic ? "собственный ключ подключён" : "через Vercel Gateway"}</span>
             <div>

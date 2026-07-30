@@ -83,6 +83,16 @@ export async function currentUser() {
   return data.session?.user || null;
 }
 
+export async function aiCloudContext() {
+  const cfg = getConfig();
+  const c = getClient();
+  if (!cfg || !c) return null;
+  const { data } = await c.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) return null;
+  return { url: cfg.url, anonKey: cfg.anonKey, accessToken };
+}
+
 export async function signUp(email, password) {
   const c = getClient();
   if (!c) throw new Error("Облако не настроено");
@@ -178,6 +188,7 @@ export async function syncAll() {
   let pulled = 0, pushed = 0;
 
   for (const row of rows || []) {
+    if (!syncable(row.key)) continue;
     cloudKeys.add(row.key);
     const cloudTs = Date.parse(row.updated_at) || 0;
     const localTs = m[row.key] || 0;

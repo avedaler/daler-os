@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { BookOpen, BrainCircuit, FileText, Plus, Trash2, Upload, Youtube } from "lucide-react";
 import { businessResourceContext } from "../lib/business";
 import AiChat from "./AiChat";
+import { aiCloudContext } from "../lib/cloud";
 import { Btn, Field, Section } from "./atoms";
 
 const SOURCE_TYPES = [
@@ -71,6 +72,7 @@ export default function BusinessAdvisor({
     setError("");
     setNotice("");
     try {
+      const cloud = await aiCloudContext();
       const response = await fetch("/api/ai-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,6 +81,7 @@ export default function BusinessAdvisor({
           task: "ingest",
           messages: [{ role: "user", content: "Извлеки и структурируй знания из этого источника." }],
           resource: { ...draft, type: sourceType },
+          cloud,
         }),
       });
       const payload = await response.json().catch(() => ({}));
