@@ -167,5 +167,11 @@ const businessKnowledge = migrateBusinessKnowledge({
 assert.equal(businessKnowledge.resources.length, 1);
 assert.match(businessResourceContext(businessKnowledge.resources[0]), /Диагностика ограничения/);
 assert.deepEqual(migrateBusinessChat([{ role: "user", content: "Проверить гипотезу" }, { role: "system", content: "скрыто" }]), [{ role: "user", content: "Проверить гипотезу", source: null }]);
+assert.deepEqual(migrateBusinessChat([{ role: "assistant", content: "Ответ", model: "anthropic/claude-opus-4.8" }]), [{
+  role: "assistant",
+  content: "Ответ",
+  model: "anthropic/claude-opus-4.8",
+  source: null,
+}]);
 
 console.log("Migration and protocol checks passed.");

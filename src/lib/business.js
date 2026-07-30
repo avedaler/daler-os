@@ -46,11 +46,15 @@ export function migrateBusinessChat(value) {
   return value
     .filter((item) => ["user", "assistant"].includes(item?.role) && typeof item?.content === "string")
     .slice(-60)
-    .map((item) => ({
-      role: item.role,
-      content: cleanText(item.content, 12000),
-      source: item.source && typeof item.source === "object" ? item.source : null,
-    }));
+    .map((item) => {
+      const model = cleanText(item.model, 120);
+      return {
+        role: item.role,
+        content: cleanText(item.content, 12000),
+        ...(model ? { model } : {}),
+        source: item.source && typeof item.source === "object" ? item.source : null,
+      };
+    });
 }
 
 export function businessResourceContext(resource) {

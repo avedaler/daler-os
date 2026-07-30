@@ -3,6 +3,18 @@ import { getYoutubeTranscript, parseYouTubeId } from "./_lib/youtube.js";
 
 const DEFAULT_MODEL = "perplexity/sonar";
 const YOUTUBE_VIDEO_MODEL = "google/gemini-2.5-flash-lite";
+const MODEL_CATALOG_URL = "https://ai-gateway.vercel.sh/v1/models";
+const MODEL_ID_PATTERN = /^(openai|anthropic)\/[a-z0-9][a-z0-9._-]{1,100}$/;
+const FALLBACK_SELECTABLE_MODELS = [
+  { id: "openai/gpt-5.6-sol", name: "GPT-5.6 Sol", provider: "openai" },
+  { id: "openai/gpt-5.6-terra", name: "GPT-5.6 Terra", provider: "openai" },
+  { id: "openai/gpt-5.6-luna", name: "GPT-5.6 Luna", provider: "openai" },
+  { id: "openai/gpt-5.4", name: "GPT-5.4", provider: "openai" },
+  { id: "anthropic/claude-opus-4.8", name: "Claude Opus 4.8", provider: "anthropic" },
+  { id: "anthropic/claude-opus-4.6", name: "Claude Opus 4.6", provider: "anthropic" },
+  { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6", provider: "anthropic" },
+  { id: "anthropic/claude-haiku-4.5", name: "Claude Haiku 4.5", provider: "anthropic" },
+];
 const MODEL_FALLBACKS = [
   "perplexity/sonar-pro",
   "zai/glm-4.6v-flash",
@@ -14,6 +26,7 @@ const MAX_MESSAGES = 12;
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_CONTEXT_LENGTH = 70000;
 const MAX_RESOURCE_CONTENT = 60000;
+let modelCatalogCache = { expiresAt: 0, models: [] };
 
 const SYSTEM_PROMPTS = {
   forecast: `Ты — аналитик прогнозов внутри DALER OS. Отвечай только на русском, коротко и предметно.
@@ -71,6 +84,50 @@ function cleanGeneratedText(value) {
     .replace(/(?:\[(?:\d+(?:\s*,\s*\d+)*|context|контекст|source|источник)\]|【\d+】)/gi, "")
     .replace(/[ \t]+(\r?\n)/g, "$1")
     .trim();
+}
+
+function selectableModel(value) {
+  const model = cleanText(value, 120).toLowerCase();
+  return MODEL_ID_PATTERN.test(model) ? model : "";
+}
+
+function gatewayByok() {
+  const byok = {};
+  if (process.env.OPENAI_API_KEY) byok.openai = [{ apiKey: process.env.OPENAI_API_KEY }];
+  if (process.env.ANTHROPIC_API_KEY) byok.anthropic = [{ apiKey: process.env.ANTHROPIC_API_KEY }];
+  return byok;
+}
+
+async function availableChatModels() {
+  if (modelCatalogCache.expiresAt > Date.now() && modelCatalogCache.models.length) return modelCatalogCache.models;
+  try {
+    const result = await fetch(MODEL_CATALOG_URL, { headers: { Accept: "application/json" } });
+    if (!result.ok) throw new Error(`Каталог моделей недоступен: ${result.status}`);
+    const payload = await result.json();
+    const models = Array.isArray(payload?.data) ? payload.data : [];
+    const filtered = models
+      .filter((item) => {
+        const id = selectableModel(item?.id);
+        if (!id || /audio|embedding|image|moderation|realtime|transcri|video/.test(id)) return false;
+        const outputs = item?.architecture?.output_modalities;
+        return !Array.isArray(outputs) || outputs.includes("text");
+      })
+      .sort((a, b) => Number(b.released || b.created || 0) - Number(a.released || a.created || 0));
+    const selected = ["openai", "anthropic"].flatMap((provider) => filtered
+      .filter((item) => item.id.startsWith(`${provider}/`))
+      .slice(0, 8)
+      .map((item) => ({
+        id: item.id,
+        name: cleanText(item.name, 120) || item.id.split("/").at(-1),
+        provider,
+      })));
+    if (!selected.length) throw new Error("Каталог не содержит подходящих моделей");
+    modelCatalogCache = { expiresAt: Date.now() + 15 * 60 * 1000, models: selected };
+    return selected;
+  } catch (error) {
+    console.error("AI model catalog unavailable", error?.message || error);
+    return FALLBACK_SELECTABLE_MODELS;
+  }
 }
 
 function gatewayErrorDetails(error) {
@@ -131,9 +188,12 @@ ${context || "Контекст не передан."}
 </context>`;
 }
 
-async function callGateway({ instructions, input, max_output_tokens, tag }) {
-  const models = [...new Set([process.env.AI_CHAT_MODEL || DEFAULT_MODEL, ...MODEL_FALLBACKS])];
+async function callGateway({ instructions, input, max_output_tokens, tag, requestedModel = "" }) {
+  const models = requestedModel
+    ? [requestedModel]
+    : [...new Set([process.env.AI_CHAT_MODEL || DEFAULT_MODEL, ...MODEL_FALLBACKS])];
   const failures = [];
+  const byok = gatewayByok();
 
   for (const model of models) {
     try {
@@ -148,12 +208,13 @@ async function callGateway({ instructions, input, max_output_tokens, tag }) {
         providerOptions: {
           gateway: {
             tags: ["daler-os", tag || "chat", model],
+            ...(Object.keys(byok).length ? { byok } : {}),
           },
         },
       });
       const text = cleanGeneratedText(result.text);
       if (!text) throw new Error("ИИ не смог подготовить ответ");
-      return text;
+      return { text, model };
     } catch (error) {
       const details = gatewayErrorDetails(error);
       failures.push({ error, details, model });
@@ -288,21 +349,33 @@ ${content || "не передан"}
 ${sourceContent}
 </source>`,
   }];
-  const text = await callGateway({
+  const generated = await callGateway({
     instructions: INGEST_PROMPT,
     input,
     max_output_tokens: 1200,
     tag: "business-ingest",
   });
   return {
-    knowledge: parseKnowledge(text),
+    knowledge: parseKnowledge(generated.text),
     source: sourceMetadata(videoSource, "captions"),
   };
 }
 
 export default async function handler(request, response) {
   response.setHeader("Cache-Control", "no-store");
-  if (request.method !== "POST") return response.status(405).json({ error: "Разрешён только POST-запрос" });
+  if (!["GET", "POST"].includes(request.method)) return response.status(405).json({ error: "Метод не поддерживается" });
+  if (request.method === "GET") {
+    if (request.headers.origin && !isAllowedOrigin(request.headers.origin)) return response.status(403).json({ error: "Источник запроса не разрешён" });
+    const models = await availableChatModels();
+    return response.status(200).json({
+      models,
+      connections: {
+        gateway: true,
+        openai: Boolean(process.env.OPENAI_API_KEY),
+        anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+      },
+    });
+  }
   if (!isAllowedOrigin(request.headers.origin)) return response.status(403).json({ error: "Источник запроса не разрешён" });
 
   let body;
@@ -313,6 +386,8 @@ export default async function handler(request, response) {
   }
   const mode = String(body.mode || "");
   if (!ALLOWED_MODES.has(mode)) return response.status(400).json({ error: "Неизвестный режим ИИ" });
+  const requestedModel = body.model ? selectableModel(body.model) : "";
+  if (body.model && !requestedModel) return response.status(400).json({ error: "Эта модель не разрешена" });
 
   if (mode === "business" && body.task === "ingest") {
     try {
@@ -348,6 +423,7 @@ export default async function handler(request, response) {
       });
       return response.status(200).json({
         text,
+        model: process.env.YOUTUBE_VIDEO_MODEL || YOUTUBE_VIDEO_MODEL,
         source: sourceMetadata({
           title: "Видео YouTube",
           url: videoUrl,
@@ -373,13 +449,14 @@ export default async function handler(request, response) {
   const instructions = chatInstructions(mode, context);
 
   try {
-    const text = await callGateway({
+    const generated = await callGateway({
       instructions,
       input: messages,
       max_output_tokens: mode === "business" ? 1000 : 700,
       tag: `${mode}-chat`,
+      requestedModel,
     });
-    return response.status(200).json({ text, source: sourceMetadata(videoSource, "captions") });
+    return response.status(200).json({ text: generated.text, model: generated.model, source: sourceMetadata(videoSource, "captions") });
   } catch (error) {
     console.error("AI request failed", error);
     return response.status(error.statusCode || 502).json({ error: error.message || "Не удалось связаться с ИИ" });

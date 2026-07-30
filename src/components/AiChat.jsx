@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageCircle, Mic, MicOff, Send, Trash2, Volume2, VolumeX } from "lucide-react";
+import { Bot, Check, ExternalLink, MessageCircle, Mic, MicOff, Pencil, Send, Trash2, Volume2, VolumeX, X } from "lucide-react";
 
 const MAX_SAVED_MESSAGES = 60;
 const MAX_SENT_MESSAGES = 12;
 const AUTO_SPEAK_KEY = "daler-os-ai-auto-speak";
 const LATEST_FORECAST_KEY = "daler-os-ai-forecast-latest";
+const MODEL_STORAGE_KEY = "daler-os-ai-model";
+const FALLBACK_MODEL_OPTIONS = [
+  { id: "openai/gpt-5.6-sol", name: "GPT-5.6 Sol", provider: "openai" },
+  { id: "openai/gpt-5.6-terra", name: "GPT-5.6 Terra", provider: "openai" },
+  { id: "openai/gpt-5.6-luna", name: "GPT-5.6 Luna", provider: "openai" },
+  { id: "openai/gpt-5.4", name: "GPT-5.4", provider: "openai" },
+  { id: "anthropic/claude-opus-4.8", name: "Claude Opus 4.8", provider: "anthropic" },
+  { id: "anthropic/claude-opus-4.6", name: "Claude Opus 4.6", provider: "anthropic" },
+  { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6", provider: "anthropic" },
+  { id: "anthropic/claude-haiku-4.5", name: "Claude Haiku 4.5", provider: "anthropic" },
+];
 
 function loadMessages(storageKey) {
   try {
@@ -22,6 +33,14 @@ function loadAutoSpeak() {
     return localStorage.getItem(AUTO_SPEAK_KEY) === "true";
   } catch {
     return false;
+  }
+}
+
+function loadSelectedModel() {
+  try {
+    return localStorage.getItem(MODEL_STORAGE_KEY) || "";
+  } catch {
+    return "";
   }
 }
 
@@ -45,6 +64,11 @@ export default function AiChat({
   const [listening, setListening] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState(null);
   const [autoSpeak, setAutoSpeak] = useState(loadAutoSpeak);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingDraft, setEditingDraft] = useState("");
+  const [selectedModel, setSelectedModel] = useState(loadSelectedModel);
+  const [modelOptions, setModelOptions] = useState(FALLBACK_MODEL_OPTIONS);
+  const [connections, setConnections] = useState({ gateway: true, openai: false, anthropic: false });
   const recognitionRef = useRef(null);
   const controlled = Array.isArray(valueMessages);
   const messages = controlled ? valueMessages : localMessages;
@@ -75,6 +99,35 @@ export default function AiChat({
   }, [autoSpeak]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem(MODEL_STORAGE_KEY, selectedModel);
+    } catch {
+      // The selected model remains active for this session.
+    }
+  }, [selectedModel]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/ai-chat", { method: "GET", headers: { Accept: "application/json" } })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Каталог моделей недоступен")))
+      .then((payload) => {
+        if (!active) return;
+        if (Array.isArray(payload.models) && payload.models.length) setModelOptions(payload.models);
+        if (payload.connections && typeof payload.connections === "object") {
+          setConnections({
+            gateway: payload.connections.gateway !== false,
+            openai: Boolean(payload.connections.openai),
+            anthropic: Boolean(payload.connections.anthropic),
+          });
+        }
+      })
+      .catch(() => {
+        // The verified fallback list keeps model selection available offline.
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     if (mode !== "forecast" || !messages.some((message) => message.role === "assistant")) return;
     try {
       localStorage.setItem(LATEST_FORECAST_KEY, JSON.stringify({
@@ -97,6 +150,9 @@ export default function AiChat({
     .filter((item) => shared.includes(item.id))
     .map((item) => `${item.label}: ${item.value}`)
     .join("\n"), [shareOptions, shared]);
+  const modelLabels = useMemo(() => new Map(modelOptions.map((item) => [item.id, item.name])), [modelOptions]);
+  const openAiModels = modelOptions.filter((item) => item.provider === "openai");
+  const anthropicModels = modelOptions.filter((item) => item.provider === "anthropic");
 
   const speak = (text, index) => {
     if (!supportsSpeech || !String(text || "").trim()) return;
@@ -161,13 +217,7 @@ export default function AiChat({
     recognition.start();
   };
 
-  const send = async (text) => {
-    const content = String(text || "").trim();
-    if (!content || sending) return;
-    const userMessage = { role: "user", content };
-    const nextMessages = [...messages, userMessage];
-    commitMessages(nextMessages);
-    setDraft("");
+  const requestReply = async (nextMessages) => {
     setError("");
     setSending(true);
 
@@ -177,13 +227,19 @@ export default function AiChat({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode,
+          model: selectedModel,
           messages: nextMessages.slice(-MAX_SENT_MESSAGES),
           context: [context, sharedContext].filter(Boolean).join("\n\n"),
         }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload.text) throw new Error(payload.error || "ИИ сейчас недоступен");
-      commitMessages((current) => [...current, { role: "assistant", content: payload.text, source: payload.source || null }]);
+      commitMessages((current) => [...current, {
+        role: "assistant",
+        content: payload.text,
+        model: payload.model || selectedModel || null,
+        source: payload.source || null,
+      }]);
       if (autoSpeak) speak(payload.text, nextMessages.length);
     } catch (requestError) {
       setError(requestError.message || "Не удалось получить ответ");
@@ -192,11 +248,44 @@ export default function AiChat({
     }
   };
 
+  const send = async (text) => {
+    const content = String(text || "").trim();
+    if (!content || sending) return;
+    const nextMessages = [...messages, { role: "user", content }];
+    commitMessages(nextMessages);
+    setDraft("");
+    await requestReply(nextMessages);
+  };
+
+  const beginEdit = (index) => {
+    if (sending) return;
+    setEditingIndex(index);
+    setEditingDraft(messages[index]?.content || "");
+    setError("");
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setEditingDraft("");
+  };
+
+  const saveEdit = async () => {
+    const content = editingDraft.trim();
+    if (editingIndex === null || !content || sending) return;
+    const nextMessages = messages
+      .slice(0, editingIndex + 1)
+      .map((message, index) => index === editingIndex ? { ...message, content } : message);
+    commitMessages(nextMessages);
+    cancelEdit();
+    await requestReply(nextMessages);
+  };
+
   const clear = () => {
     if (supportsSpeech) window.speechSynthesis.cancel();
     recognitionRef.current?.abort();
     setSpeakingIndex(null);
     setListening(false);
+    cancelEdit();
     commitMessages([]);
     setError("");
     if (controlled || !storageKey) return;
@@ -234,6 +323,35 @@ export default function AiChat({
         </div>
       </header>
 
+      <div className="ai-model-bar">
+        <label>
+          <span><Bot size={15} aria-hidden="true" />Модель ответа</span>
+          <select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} disabled={sending}>
+            <option value="">Авто · DALER ИИ</option>
+            {selectedModel && !modelOptions.some((item) => item.id === selectedModel) && <option value={selectedModel}>{selectedModel}</option>}
+            <optgroup label="OpenAI · ChatGPT">
+              {openAiModels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </optgroup>
+            <optgroup label="Anthropic · Claude">
+              {anthropicModels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </optgroup>
+          </select>
+        </label>
+        <details className="ai-connection">
+          <summary>Подключение API</summary>
+          <div>
+            <p>Подписки ChatGPT и Claude не включают API. Модели уже доступны через Vercel; собственные API-ключи подключают отдельный биллинг провайдера.</p>
+            <span>OpenAI: {connections.openai ? "собственный ключ подключён" : "через Vercel Gateway"}</span>
+            <span>Anthropic: {connections.anthropic ? "собственный ключ подключён" : "через Vercel Gateway"}</span>
+            <div>
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">Ключ OpenAI <ExternalLink size={13} aria-hidden="true" /></a>
+              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">Ключ Anthropic <ExternalLink size={13} aria-hidden="true" /></a>
+              <a href="https://vercel.com/docs/ai-gateway/authentication-and-byok/byok" target="_blank" rel="noreferrer">Подключение BYOK <ExternalLink size={13} aria-hidden="true" /></a>
+            </div>
+          </div>
+        </details>
+      </div>
+
       {contextLabel && <div className="ai-context-note"><strong>Контекст:</strong> {contextLabel}</div>}
 
       {shareOptions.length > 0 && <div className="ai-share">
@@ -259,22 +377,54 @@ export default function AiChat({
           <p>Начни с конкретного вопроса. Ответ будет коротким, практичным и на русском.</p>
           <div>{quickPrompts.map((prompt) => <button type="button" key={prompt} onClick={() => send(prompt)}>{prompt}</button>)}</div>
         </div>}
-        {messages.map((message, index) => <div className={`ai-message ${message.role}`} key={`${message.role}-${index}`}>
+        {messages.map((message, index) => <div className={`ai-message ${message.role}${editingIndex === index ? " editing" : ""}`} key={`${message.role}-${index}`}>
           <div className="ai-message-head">
             <span>{message.role === "user" ? "Вы" : "DALER ИИ"}</span>
-            {message.role === "assistant" && supportsSpeech && <button
-              type="button"
-              className="ai-message-speak"
-              onClick={() => speak(message.content, index)}
-              aria-label={speakingIndex === index ? "Остановить озвучивание" : "Озвучить ответ"}
-              title={speakingIndex === index ? "Остановить" : "Озвучить ответ"}
-            >{speakingIndex === index ? <VolumeX size={15} aria-hidden="true" /> : <Volume2 size={15} aria-hidden="true" />}</button>}
+            <span className="ai-message-tools">
+              {message.role === "user" && editingIndex !== index && <button
+                type="button"
+                className="ai-message-action"
+                onClick={() => beginEdit(index)}
+                disabled={sending}
+                aria-label="Редактировать сообщение"
+                title="Редактировать сообщение"
+              ><Pencil size={14} aria-hidden="true" /></button>}
+              {message.role === "assistant" && supportsSpeech && <button
+                type="button"
+                className="ai-message-action"
+                onClick={() => speak(message.content, index)}
+                aria-label={speakingIndex === index ? "Остановить озвучивание" : "Озвучить ответ"}
+                title={speakingIndex === index ? "Остановить" : "Озвучить ответ"}
+              >{speakingIndex === index ? <VolumeX size={15} aria-hidden="true" /> : <Volume2 size={15} aria-hidden="true" />}</button>}
+            </span>
           </div>
-          <p>{message.content}</p>
+          {editingIndex === index ? <div className="ai-message-editor">
+            <textarea
+              autoFocus
+              value={editingDraft}
+              onChange={(event) => setEditingDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") cancelEdit();
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  saveEdit();
+                }
+              }}
+              rows={4}
+              maxLength={4000}
+              aria-label="Изменить сообщение"
+            />
+            <small>Следующие ответы будут удалены и сформированы заново.</small>
+            <div className="ai-message-edit-actions">
+              <button type="button" onClick={cancelEdit} aria-label="Отменить редактирование" title="Отменить"><X size={16} aria-hidden="true" /></button>
+              <button type="button" className="confirm" onClick={saveEdit} disabled={!editingDraft.trim()} aria-label="Сохранить и обновить ответ" title="Сохранить и обновить ответ"><Check size={16} aria-hidden="true" /></button>
+            </div>
+          </div> : <p>{message.content}</p>}
           {message.source?.type === "youtube" && <small className="ai-source">
             {message.source.analysisMode === "video" ? "Проанализированы видеоряд и аудио" : "Проанализированы субтитры"}: {message.source.title}
             {message.source.truncated ? " · длинный текст сокращён" : ""}
           </small>}
+          {message.role === "assistant" && message.model && <small className="ai-model-used">Модель: {modelLabels.get(message.model) || message.model}</small>}
         </div>)}
         {sending && <div className="ai-message assistant pending"><div className="ai-message-head"><span>DALER ИИ</span></div><p>Анализирую…</p></div>}
       </div>
