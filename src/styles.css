@@ -800,6 +800,9 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
 .ai-message-action:hover { background: var(--surface-raised); color: var(--gold); }
 .ai-message-action:disabled { opacity: .4; }
 .ai-message p { margin: 0; color: var(--text); line-height: 1.62; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai-message-attachments { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.ai-message-attachments > span { min-width: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 5px; color: var(--muted); padding: 4px 6px; font-size: 9px; }
+.ai-message-attachments > span svg { flex: 0 0 auto; }
 .ai-message.editing { width: min(92%, 760px); border-color: var(--primary); background: var(--surface); }
 .ai-message-editor { display: grid; gap: 8px; }
 .ai-message-editor textarea { width: 100%; min-height: 96px; resize: vertical; border: 1px solid var(--primary-border); border-radius: 7px; background: var(--surface-quiet); color: var(--text); padding: 10px 12px; line-height: 1.55; }
@@ -817,11 +820,20 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
 .ai-error > button { min-height: 34px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--danger-border); border-radius: 6px; background: transparent; color: var(--red); padding: 6px 9px; cursor: pointer; }
 .ai-error > button:hover { background: var(--surface-raised); }
 .ai-error > button:disabled { opacity: .45; cursor: not-allowed; }
-.ai-composer { display: grid; grid-template-columns: minmax(0, 1fr) 46px; gap: 8px; align-items: end; }
-.ai-composer.has-voice { grid-template-columns: 46px minmax(0, 1fr) 46px; }
+.ai-attachment-tray { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.ai-attachment-tray > div { min-width: 0; min-height: 48px; display: grid; grid-template-columns: 20px minmax(0, 1fr) 30px; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-quiet); padding: 6px 7px 6px 9px; }
+.ai-attachment-tray > div > svg { color: var(--gold); }
+.ai-attachment-tray span { min-width: 0; display: grid; gap: 2px; }
+.ai-attachment-tray strong { overflow: hidden; color: var(--text); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.ai-attachment-tray small { color: var(--muted-2); font-size: 9px; }
+.ai-attachment-tray button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
+.ai-attachment-tray button:hover { background: var(--surface-raised); color: var(--red); }
+.ai-composer { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; gap: 8px; align-items: end; }
+.ai-composer.has-voice { grid-template-columns: 46px 46px minmax(0, 1fr) 46px; }
 .ai-composer textarea { width: 100%; min-height: 78px; resize: vertical; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-quiet); color: var(--text); padding: 10px 12px; line-height: 1.5; }
 .ai-composer button { width: 46px; height: 46px; display: grid; place-items: center; border: 1px solid var(--gold); border-radius: 7px; background: var(--gold); color: var(--on-accent); cursor: pointer; }
-.ai-composer .voice-button { border-color: var(--border); background: transparent; color: var(--gold); }
+.ai-composer .voice-button, .ai-composer .attach-button { border-color: var(--border); background: transparent; color: var(--gold); }
+.ai-composer .attach-button:hover, .ai-composer .voice-button:hover { border-color: var(--accent-border); background: var(--accent-soft); }
 .ai-composer .voice-button.active { border-color: var(--danger-border); background: var(--danger-subtle); color: var(--red); }
 .ai-composer button:disabled { opacity: .45; cursor: not-allowed; }
 .ai-disclaimer { margin: -4px 0 0; color: var(--muted-2); font-size: 9px; line-height: 1.4; }
@@ -1068,6 +1080,7 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
   .ai-connection > summary { justify-content: center; }
   .ai-connection > div { position: static; width: 100%; margin-top: 7px; box-shadow: none; }
   .ai-message { width: 92%; }
+  .ai-attachment-tray { grid-template-columns: 1fr; }
   .ai-provider-field { grid-template-columns: minmax(0, 1fr) 40px; }
   .ai-provider-field .btn { grid-column: 1 / -1; width: 100%; }
   .ai-empty > div { display: grid; }

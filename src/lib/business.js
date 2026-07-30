@@ -6,6 +6,17 @@ const cleanText = (value, max = MAX_TEXT_LENGTH) => String(value || "").trim().s
 const cleanList = (value) => Array.isArray(value)
   ? value.map((item) => cleanText(item, 500)).filter(Boolean).slice(0, MAX_LIST_ITEMS)
   : [];
+const cleanAttachmentMeta = (value) => Array.isArray(value)
+  ? value
+    .filter((item) => item && typeof item === "object")
+    .slice(0, 4)
+    .map((item) => ({
+      name: cleanText(item.name, 180) || "Файл",
+      mediaType: cleanText(item.mediaType, 100),
+      size: Math.max(0, Number(item.size) || 0),
+      kind: ["text", "image", "file"].includes(item.kind) ? item.kind : "file",
+    }))
+  : [];
 
 export function emptyBusinessKnowledge() {
   return { version: 1, resources: [] };
@@ -53,6 +64,7 @@ export function migrateBusinessChat(value) {
         content: cleanText(item.content, 12000),
         ...(model ? { model } : {}),
         source: item.source && typeof item.source === "object" ? item.source : null,
+        attachments: cleanAttachmentMeta(item.attachments),
       };
     });
 }

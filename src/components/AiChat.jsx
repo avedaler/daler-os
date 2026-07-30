@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Check, ExternalLink, MessageCircle, Mic, MicOff, Pencil, RotateCcw, Send, Trash2, Volume2, VolumeX, X } from "lucide-react";
+import { Bot, Check, ExternalLink, FileText, Image, MessageCircle, Mic, MicOff, Paperclip, Pencil, RotateCcw, Send, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import { aiCloudContext } from "../lib/cloud";
+import {
+  attachmentMeta,
+  attachmentPayloadSize,
+  CHAT_ATTACHMENT_ACCEPT,
+  formatAttachmentSize,
+  MAX_ATTACHMENT_PAYLOAD_CHARS,
+  MAX_CHAT_ATTACHMENTS,
+  persistableMessages,
+  prepareChatAttachment,
+} from "../lib/aiAttachments";
 
 const MAX_SAVED_MESSAGES = 60;
 const MAX_SENT_MESSAGES = 12;
@@ -22,7 +32,9 @@ function loadMessages(storageKey) {
   try {
     const value = JSON.parse(localStorage.getItem(storageKey) || "[]");
     return Array.isArray(value)
-      ? value.filter((item) => ["user", "assistant"].includes(item?.role) && typeof item?.content === "string").slice(-MAX_SAVED_MESSAGES)
+      ? persistableMessages(value
+        .filter((item) => ["user", "assistant"].includes(item?.role) && typeof item?.content === "string")
+        .slice(-MAX_SAVED_MESSAGES))
       : [];
   } catch {
     return [];
@@ -70,7 +82,11 @@ export default function AiChat({
   const [selectedModel, setSelectedModel] = useState(loadSelectedModel);
   const [modelOptions, setModelOptions] = useState(FALLBACK_MODEL_OPTIONS);
   const [connections, setConnections] = useState({ gateway: true, openai: false, anthropic: false });
+  const [attachments, setAttachments] = useState([]);
+  const [preparingAttachments, setPreparingAttachments] = useState(false);
   const recognitionRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const failedRequestRef = useRef(null);
   const controlled = Array.isArray(valueMessages);
   const messages = controlled ? valueMessages : localMessages;
   const supportsRecognition = typeof window !== "undefined"
@@ -85,7 +101,7 @@ export default function AiChat({
   useEffect(() => {
     if (controlled || !storageKey) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify(messages.slice(-MAX_SAVED_MESSAGES)));
+      localStorage.setItem(storageKey, JSON.stringify(persistableMessages(messages.slice(-MAX_SAVED_MESSAGES))));
     } catch {
       // The chat remains available for this session if storage is unavailable.
     }
@@ -154,7 +170,7 @@ export default function AiChat({
       localStorage.setItem(LATEST_FORECAST_KEY, JSON.stringify({
         contextLabel,
         context,
-        messages: messages.slice(-8),
+        messages: persistableMessages(messages.slice(-8)),
         updatedAt: new Date().toISOString(),
       }));
     } catch {
@@ -174,6 +190,7 @@ export default function AiChat({
   const modelLabels = useMemo(() => new Map(modelOptions.map((item) => [item.id, item.name])), [modelOptions]);
   const openAiModels = modelOptions.filter((item) => item.provider === "openai");
   const anthropicModels = modelOptions.filter((item) => item.provider === "anthropic");
+  const canSend = Boolean(draft.trim() || attachments.length);
 
   const speak = (text, index) => {
     if (!supportsSpeech || !String(text || "").trim()) return;
@@ -257,6 +274,7 @@ export default function AiChat({
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload.text) throw new Error(payload.error || "ИИ сейчас недоступен");
+      failedRequestRef.current = null;
       commitMessages((current) => [...current, {
         role: "assistant",
         content: payload.text,
@@ -265,6 +283,7 @@ export default function AiChat({
       }]);
       if (autoSpeak) speak(payload.text, nextMessages.length);
     } catch (requestError) {
+      failedRequestRef.current = nextMessages;
       setError(requestError.message || "Не удалось получить ответ");
     } finally {
       setSending(false);
@@ -273,18 +292,53 @@ export default function AiChat({
 
   const send = async (text) => {
     const content = String(text || "").trim();
-    if (!content || sending) return;
-    const nextMessages = [...messages, { role: "user", content }];
-    commitMessages(nextMessages);
+    if ((!content && !attachments.length) || sending || preparingAttachments) return;
+    const attachmentPayloads = attachments;
+    const displayMessage = {
+      role: "user",
+      content,
+      attachments: attachmentPayloads.map(attachmentMeta),
+    };
+    const persistedMessages = [...messages, displayMessage];
+    const requestMessages = [...messages, {
+      ...displayMessage,
+      attachments: attachmentPayloads,
+    }];
+    commitMessages(persistedMessages);
     setDraft("");
-    await requestReply(nextMessages);
+    setAttachments([]);
+    await requestReply(requestMessages);
+  };
+
+  const addAttachments = async (files) => {
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) return;
+    if (attachments.length + selectedFiles.length > MAX_CHAT_ATTACHMENTS) {
+      setError(`Можно прикрепить не больше ${MAX_CHAT_ATTACHMENTS} файлов`);
+      return;
+    }
+    setPreparingAttachments(true);
+    setError("");
+    try {
+      const prepared = [];
+      for (const file of selectedFiles) prepared.push(await prepareChatAttachment(file));
+      const next = [...attachments, ...prepared];
+      const payloadSize = next.reduce((sum, item) => sum + attachmentPayloadSize(item), 0);
+      if (payloadSize > MAX_ATTACHMENT_PAYLOAD_CHARS) throw new Error("Общий размер вложений слишком большой");
+      setAttachments(next);
+    } catch (attachmentError) {
+      setError(attachmentError.message || "Не удалось подготовить вложение");
+    } finally {
+      setPreparingAttachments(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const beginEdit = (index) => {
     if (sending) return;
     setEditingIndex(index);
     setEditingDraft(messages[index]?.content || "");
-    setError("");
+    setError(messages[index]?.attachments?.length ? "При редактировании приложенные файлы нужно прикрепить заново." : "");
   };
 
   const cancelEdit = () => {
@@ -297,7 +351,7 @@ export default function AiChat({
     if (editingIndex === null || !content || sending) return;
     const nextMessages = messages
       .slice(0, editingIndex + 1)
-      .map((message, index) => index === editingIndex ? { ...message, content } : message);
+      .map((message, index) => index === editingIndex ? { ...message, content, attachments: [] } : message);
     commitMessages(nextMessages);
     cancelEdit();
     await requestReply(nextMessages);
@@ -308,6 +362,8 @@ export default function AiChat({
     recognitionRef.current?.abort();
     setSpeakingIndex(null);
     setListening(false);
+    setAttachments([]);
+    failedRequestRef.current = null;
     cancelEdit();
     commitMessages([]);
     setError("");
@@ -428,7 +484,7 @@ export default function AiChat({
               onChange={(event) => setEditingDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Escape") cancelEdit();
-                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
                   saveEdit();
                 }
@@ -442,7 +498,13 @@ export default function AiChat({
               <button type="button" onClick={cancelEdit} aria-label="Отменить редактирование" title="Отменить"><X size={16} aria-hidden="true" /></button>
               <button type="button" className="confirm" onClick={saveEdit} disabled={!editingDraft.trim()} aria-label="Сохранить и обновить ответ" title="Сохранить и обновить ответ"><Check size={16} aria-hidden="true" /></button>
             </div>
-          </div> : <p>{message.content}</p>}
+          </div> : message.content ? <p>{message.content}</p> : null}
+          {message.attachments?.length > 0 && <div className="ai-message-attachments">
+            {message.attachments.map((attachment, attachmentIndex) => <span key={`${attachment.name}-${attachmentIndex}`}>
+              {attachment.kind === "image" ? <Image size={13} aria-hidden="true" /> : attachment.kind === "text" ? <FileText size={13} aria-hidden="true" /> : <Paperclip size={13} aria-hidden="true" />}
+              {attachment.name}
+            </span>)}
+          </div>}
           {message.source?.type === "youtube" && <small className="ai-source">
             {message.source.analysisMode === "video" ? "Проанализированы видеоряд и аудио" : "Проанализированы субтитры"}: {message.source.title}
             {message.source.truncated ? " · длинный текст сокращён" : ""}
@@ -454,12 +516,37 @@ export default function AiChat({
 
       {error && <div className="ai-error" role="alert">
         <span>{error}</span>
-        {messages.at(-1)?.role === "user" && <button type="button" onClick={() => requestReply(messages)} disabled={sending}>
+        {messages.at(-1)?.role === "user" && <button type="button" onClick={() => requestReply(failedRequestRef.current || messages)} disabled={sending}>
           <RotateCcw size={14} aria-hidden="true" />Повторить
         </button>}
       </div>}
 
+      {attachments.length > 0 && <div className="ai-attachment-tray">
+        {attachments.map((attachment) => <div key={attachment.id}>
+          {attachment.kind === "image" ? <Image size={15} aria-hidden="true" /> : attachment.kind === "text" ? <FileText size={15} aria-hidden="true" /> : <Paperclip size={15} aria-hidden="true" />}
+          <span><strong>{attachment.name}</strong><small>{formatAttachmentSize(attachment.size)}</small></span>
+          <button type="button" onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))} aria-label={`Убрать ${attachment.name}`} title="Убрать вложение"><X size={14} aria-hidden="true" /></button>
+        </div>)}
+      </div>}
+
       <form className={`ai-composer${supportsRecognition ? " has-voice" : ""}`} onSubmit={(event) => { event.preventDefault(); send(draft); }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={CHAT_ATTACHMENT_ACCEPT}
+          multiple
+          hidden
+          onChange={(event) => addAttachments(event.target.files)}
+          aria-label="Выбрать вложения"
+        />
+        <button
+          type="button"
+          className="attach-button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={sending || preparingAttachments || attachments.length >= MAX_CHAT_ATTACHMENTS}
+          aria-label="Прикрепить файл"
+          title="Прикрепить файл"
+        ><Paperclip size={18} aria-hidden="true" /></button>
         {supportsRecognition && <button
           type="button"
           className={`voice-button${listening ? " active" : ""}`}
@@ -468,8 +555,20 @@ export default function AiChat({
           aria-label={listening ? "Остановить запись" : "Ввести голосом"}
           title={listening ? "Остановить запись" : "Голосовой ввод"}
         >{listening ? <MicOff size={19} aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}</button>}
-        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} rows={3} maxLength={4000} placeholder={mode === "forecast" ? "Что этот прогноз значит для моих решений?" : mode === "business" ? "Опиши решение, рынок, риск или вставь ссылку YouTube…" : "Опиши ситуацию, решение или повторяющийся паттерн…"} />
-        <button type="submit" disabled={!draft.trim() || sending} aria-label="Отправить сообщение" title="Отправить"><Send size={18} aria-hidden="true" /></button>
+        <textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              send(draft);
+            }
+          }}
+          rows={3}
+          maxLength={4000}
+          placeholder={mode === "forecast" ? "Что этот прогноз значит для моих решений?" : mode === "business" ? "Опиши решение, рынок, риск или вставь ссылку YouTube…" : "Опиши ситуацию, решение или повторяющийся паттерн…"}
+        />
+        <button type="submit" disabled={!canSend || sending || preparingAttachments} aria-label="Отправить сообщение" title="Отправить"><Send size={18} aria-hidden="true" /></button>
       </form>
       <p className="ai-disclaimer">ИИ помогает структурировать размышление, но не заменяет медицинскую, юридическую или финансовую консультацию.</p>
     </section>

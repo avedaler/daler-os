@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { attachmentText, base64Data } from "./chat-attachments.js";
 
 const PROVIDER_NAMES = {
   openai: "OpenAI",
@@ -78,7 +79,30 @@ export async function callDirectProvider({
       const response = await client.responses.create({
         model: route.modelId,
         instructions: system,
-        input: input.map((message) => ({ role: message.role, content: message.content })),
+        input: input.map((message) => {
+          if (message.role !== "user" || !message.attachments?.length) {
+            return { role: message.role, content: message.content };
+          }
+          const content = [{
+            type: "input_text",
+            text: message.content || "Проанализируй прикреплённые материалы и ответь по существу.",
+          }];
+          for (const attachment of message.attachments) {
+            if (attachment.kind === "text") {
+              content.push({ type: "input_text", text: attachmentText(attachment) });
+            } else if (attachment.kind === "image") {
+              content.push({ type: "input_image", image_url: attachment.data, detail: "auto" });
+            } else {
+              content.push({
+                type: "input_file",
+                file_data: attachment.data,
+                filename: attachment.name,
+                detail: "low",
+              });
+            }
+          }
+          return { role: message.role, content };
+        }),
         max_output_tokens: maxOutputTokens,
       });
       return { text: response.output_text || "", model: `openai/${route.modelId}` };
@@ -88,7 +112,44 @@ export async function callDirectProvider({
     const response = await client.messages.create({
       model: route.modelId,
       system,
-      messages: input.map((message) => ({ role: message.role, content: message.content })),
+      messages: input.map((message) => {
+        if (message.role !== "user" || !message.attachments?.length) {
+          return { role: message.role, content: message.content };
+        }
+        const content = [{
+          type: "text",
+          text: message.content || "Проанализируй прикреплённые материалы и ответь по существу.",
+        }];
+        for (const attachment of message.attachments) {
+          if (attachment.kind === "text") {
+            content.push({
+              type: "document",
+              source: { type: "text", media_type: "text/plain", data: attachment.content },
+              title: attachment.name,
+            });
+          } else if (attachment.kind === "image") {
+            content.push({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: attachment.mediaType,
+                data: base64Data(attachment.data),
+              },
+            });
+          } else {
+            content.push({
+              type: "document",
+              source: {
+                type: "base64",
+                media_type: "application/pdf",
+                data: base64Data(attachment.data),
+              },
+              title: attachment.name,
+            });
+          }
+        }
+        return { role: message.role, content };
+      }),
       max_tokens: maxOutputTokens,
     });
     return {
