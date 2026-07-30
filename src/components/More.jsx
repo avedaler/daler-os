@@ -10,6 +10,24 @@ import AiChat from "./AiChat";
 import BusinessAdvisor from "./BusinessAdvisor";
 import { Btn, CheckRow, ChoiceChips, Field, Section, SettingsRow, StatusBadge } from "./atoms";
 
+function loadLatestForecastAnalysis() {
+  try {
+    const snapshot = JSON.parse(localStorage.getItem("daler-os-ai-forecast-latest") || "null");
+    const messages = Array.isArray(snapshot?.messages) ? snapshot.messages : [];
+    const dialogue = messages
+      .filter((message) => ["user", "assistant"].includes(message?.role) && message?.content)
+      .map((message) => `${message.role === "user" ? "Вопрос" : "Ответ ИИ"}: ${message.content}`)
+      .join("\n");
+    if (!dialogue) return "";
+    return [
+      snapshot.contextLabel && `Период прогноза: ${snapshot.contextLabel}`,
+      dialogue,
+    ].filter(Boolean).join("\n");
+  } catch {
+    return "";
+  }
+}
+
 function useStreaks(date) {
   const [streaks, setStreaks] = useState({ noSmoke: 0, noAlcohol: 0 });
   useEffect(() => {
@@ -34,6 +52,7 @@ export function Development({ s, up, date, northStar = "", compact = false, rail
   const setHabit = (patch) => up((previous) => ({ habits: { ...previous.habits, ...patch } }));
   const streaks = useStreaks(date);
   const habits = s.habits;
+  const [forecastAnalysis] = useState(loadLatestForecastAnalysis);
   const streakLabel = (base, count, on) => `${base}${count + (on ? 1 : 0) > 0 ? ` · серия ${count + (on ? 1 : 0)} дн.` : ""}`;
   const core = <>
     <CheckRow gold on={habits.noSmoke} onClick={() => setHabit({ noSmoke: !habits.noSmoke })} label={streakLabel("Не курил", streaks.noSmoke, habits.noSmoke)} />
@@ -72,6 +91,11 @@ export function Development({ s, up, date, northStar = "", compact = false, rail
       ].filter(Boolean).join("; "),
     },
     s.dailyProtocol.evening.mainWin && { id: "result", label: "Итог дня", value: s.dailyProtocol.evening.mainWin },
+    forecastAnalysis && {
+      id: "forecast-analysis",
+      label: "AI-разбор гороскопа",
+      value: forecastAnalysis,
+    },
   ].filter(Boolean);
 
   return <>
@@ -85,7 +109,7 @@ export function Development({ s, up, date, northStar = "", compact = false, rail
     <AiChat
       mode="development"
       title="Диалог о личном развитии"
-      description="Разбери решение, привычку или повторяющийся паттерн. Контекст сделок и прогнозов сюда не подмешивается."
+      description="Разбери решение, привычку или повторяющийся паттерн. Последний AI-разбор гороскопа можно подключить отдельным выбором."
       storageKey="daler-os-ai-development"
       shareOptions={shareOptions}
       quickPrompts={[
