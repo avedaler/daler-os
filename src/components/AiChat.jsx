@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Check, ExternalLink, MessageCircle, Mic, MicOff, Pencil, Send, Trash2, Volume2, VolumeX, X } from "lucide-react";
+import { Bot, Check, ExternalLink, MessageCircle, Mic, MicOff, Pencil, RotateCcw, Send, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import { aiCloudContext } from "../lib/cloud";
 
 const MAX_SAVED_MESSAGES = 60;
@@ -452,7 +452,12 @@ export default function AiChat({
         {sending && <div className="ai-message assistant pending"><div className="ai-message-head"><span>DALER ИИ</span></div><p>Анализирую…</p></div>}
       </div>
 
-      {error && <div className="ai-error" role="alert">{error}</div>}
+      {error && <div className="ai-error" role="alert">
+        <span>{error}</span>
+        {messages.at(-1)?.role === "user" && <button type="button" onClick={() => requestReply(messages)} disabled={sending}>
+          <RotateCcw size={14} aria-hidden="true" />Повторить
+        </button>}
+      </div>}
 
       <form className={`ai-composer${supportsRecognition ? " has-voice" : ""}`} onSubmit={(event) => { event.preventDefault(); send(draft); }}>
         {supportsRecognition && <button

@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { callDirectProvider } from "./_lib/direct-ai.js";
 import { getYoutubeTranscript, parseYouTubeId } from "./_lib/youtube.js";
 import { loadUserProviderKeys } from "./_lib/provider-keys.js";
 
@@ -92,15 +93,6 @@ function selectableModel(value) {
   return MODEL_ID_PATTERN.test(model) ? model : "";
 }
 
-function gatewayByok(userKeys = {}) {
-  const byok = {};
-  const openai = userKeys.openai || process.env.OPENAI_API_KEY;
-  const anthropic = userKeys.anthropic || process.env.ANTHROPIC_API_KEY;
-  if (openai) byok.openai = [{ apiKey: openai }];
-  if (anthropic) byok.anthropic = [{ apiKey: anthropic }];
-  return byok;
-}
-
 async function availableChatModels() {
   if (modelCatalogCache.expiresAt > Date.now() && modelCatalogCache.models.length) return modelCatalogCache.models;
   try {
@@ -111,7 +103,7 @@ async function availableChatModels() {
     const filtered = models
       .filter((item) => {
         const id = selectableModel(item?.id);
-        if (!id || /audio|embedding|image|moderation|realtime|transcri|video/.test(id)) return false;
+        if (!id || /audio|embedding|image|moderation|realtime|transcri|video|-fast$/.test(id)) return false;
         const outputs = item?.architecture?.output_modalities;
         return !Array.isArray(outputs) || outputs.includes("text");
       })
@@ -192,11 +184,27 @@ ${context || "Контекст не передан."}
 }
 
 async function callGateway({ instructions, input, max_output_tokens, tag, requestedModel = "", providerKeys = {} }) {
+  const effectiveProviderKeys = {
+    openai: providerKeys.openai || process.env.OPENAI_API_KEY || "",
+    anthropic: providerKeys.anthropic || process.env.ANTHROPIC_API_KEY || "",
+  };
+  const direct = await callDirectProvider({
+    requestedModel,
+    providerKeys: effectiveProviderKeys,
+    instructions,
+    input,
+    maxOutputTokens: max_output_tokens,
+  });
+  if (direct) {
+    const text = cleanGeneratedText(direct.text);
+    if (!text) throw new Error("ИИ не смог подготовить ответ");
+    return { ...direct, text };
+  }
+
   const models = requestedModel
     ? [requestedModel]
     : [...new Set([process.env.AI_CHAT_MODEL || DEFAULT_MODEL, ...MODEL_FALLBACKS])];
   const failures = [];
-  const byok = gatewayByok(providerKeys);
 
   for (const model of models) {
     try {
@@ -211,7 +219,6 @@ async function callGateway({ instructions, input, max_output_tokens, tag, reques
         providerOptions: {
           gateway: {
             tags: ["daler-os", tag || "chat", model],
-            ...(Object.keys(byok).length ? { byok } : {}),
           },
         },
       });
@@ -234,13 +241,13 @@ async function callGateway({ instructions, input, max_output_tokens, tag, reques
   const details = failures.map((failure) => failure.details).join(" | ");
   const lastError = failures.at(-1)?.error;
   const wrapped = new Error(
-    /credit card|free credits|payment required/i.test(details)
+    /credit card|free credits|paid credits|payment required|bring your own key|byok/i.test(details)
       ? "ИИ временно недоступен: в Vercel нужно активировать кредиты AI Gateway"
       : /rate[- ]?limit|too many requests/i.test(details)
         ? "Лимит запросов ИИ временно исчерпан"
         : "ИИ не смог подготовить ответ"
   );
-  wrapped.statusCode = /credit card|free credits|payment required/i.test(details) ? 503 : lastError?.statusCode === 429 ? 429 : 502;
+  wrapped.statusCode = /credit card|free credits|paid credits|payment required|bring your own key|byok/i.test(details) ? 503 : lastError?.statusCode === 429 ? 429 : 502;
   throw wrapped;
 }
 

@@ -812,7 +812,11 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
 .ai-source { color: var(--gold); font-size: 9px; line-height: 1.45; }
 .ai-model-used { color: var(--muted-2); font: 500 9px/1.4 var(--mono); }
 .ai-message.pending { opacity: .7; }
-.ai-error { border: 1px solid var(--danger-border); border-radius: 7px; background: var(--danger-subtle); color: var(--red); padding: 10px 12px; font-size: 11px; line-height: 1.5; }
+.ai-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--danger-border); border-radius: 7px; background: var(--danger-subtle); color: var(--red); padding: 10px 12px; font-size: 11px; line-height: 1.5; }
+.ai-error > span { min-width: 0; }
+.ai-error > button { min-height: 34px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--danger-border); border-radius: 6px; background: transparent; color: var(--red); padding: 6px 9px; cursor: pointer; }
+.ai-error > button:hover { background: var(--surface-raised); }
+.ai-error > button:disabled { opacity: .45; cursor: not-allowed; }
 .ai-composer { display: grid; grid-template-columns: minmax(0, 1fr) 46px; gap: 8px; align-items: end; }
 .ai-composer.has-voice { grid-template-columns: 46px minmax(0, 1fr) 46px; }
 .ai-composer textarea { width: 100%; min-height: 78px; resize: vertical; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-quiet); color: var(--text); padding: 10px 12px; line-height: 1.5; }
