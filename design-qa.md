@@ -56,6 +56,58 @@ final result: passed
 
 ---
 
+# Adaptive Dayflow QA
+
+**Comparison Target**
+- Source visual truth: `/Users/dalerave/.codex/generated_images/019f5da8-55e1-7a61-a35e-6a138a0ae6e5/call_4aP26bsINdP4md5ODbUy0AfB.png`.
+- Browser-rendered implementation: `http://127.0.0.1:5173/`.
+- Final desktop screenshot: `design-qa-screenshots/dayflow-desktop-light-pass-2.png`.
+- Final mobile screenshot: `design-qa-screenshots/dayflow-mobile-light-pass-2.png`.
+- Dark-theme evidence: `design-qa-screenshots/dayflow-desktop-dark.png`.
+- Full comparison: `design-qa-screenshots/dayflow-comparison-pass-2.png`.
+- Focused comparison: `design-qa-screenshots/dayflow-focus-comparison-pass-2.png`.
+
+**Normalization And State**
+- Source pixels: 1487 x 1058. It was normalized to 1440 x 1024 for comparison without changing its effective aspect ratio.
+- Implementation pixels and CSS viewport: 1440 x 1024 desktop at density 1; 390 x 844 mobile at density 1.
+- State: light theme, Thursday 30 July 2026, day started, Strong state, primary outcome `Выручка 1 200 000 ₽ в июле 2026`, Morning active.
+- The final user-facing local state was restored to Collected, `Подписан и оплачен договор`, Work active.
+
+**Required Fidelity Surfaces**
+- Fonts and typography: the DALER OS serif wordmark, Manrope interface text, JetBrains Mono metrics, zero letter spacing, weights, wrapping, and truncation preserve the approved hierarchy.
+- Spacing and layout rhythm: the horizontal navigation, two-part daily compass, grouped phase timeline, circular phase icons, 6-8 px radii, restrained dividers, and compact desktop header follow the source structure.
+- Colors and visual tokens: Executive Pearl uses neutral cool surfaces, blue primary focus, green completion, red warning, and restrained gold brand accents. Warm Graphite retains equivalent semantic contrast.
+- Image and asset quality: no raster product imagery is required for this operational surface. All interface symbols use Lucide icons; no handmade SVG, CSS illustration, emoji, or placeholder asset was introduced.
+- Copy and content: Russian product copy and all existing DALER OS routines are preserved. The source's illustrative task copy was not substituted for real user data.
+
+**Full-View And Focused Evidence**
+- The full comparison shows the same navigation, state selector, primary outcome, active phase emphasis, collapsed day sequence, and contextual summary direction.
+- The focused comparison confirms the selected-state border, blue CTA, circular current-phase icon, typography hierarchy, dividers, and disclosure affordances.
+- The retained date switcher, sync status, balance score, and complete morning protocol are intentional product constraints required by previously approved DALER OS behavior.
+
+**Findings**
+- No actionable P0, P1, or P2 differences remain.
+- [P3] The real morning protocol is longer than the conceptual task list in the source, so the contextual summary appears lower on the page. The content is intentionally preserved and remains directly accessible without hiding health actions.
+
+**Comparison History**
+- Pass 1 [P2]: timeline titles collided with phase icons at desktop width, and the separate header/day controls added unnecessary vertical space.
+- Fix: replaced legacy heading layout rules with stable icon/title tracks and compacted the desktop page header and day switcher.
+- Pass 2 evidence: `design-qa-screenshots/dayflow-comparison-pass-2.png` and `design-qa-screenshots/dayflow-focus-comparison-pass-2.png` show clean title alignment and a denser first viewport.
+- Post-fix result: no remaining P0/P1/P2 visual issues at 1440 x 1024 or 390 x 844.
+
+**Primary Interactions Tested**
+- Selected all state options and edited the primary outcome.
+- Continued a started day and switched between Morning and Work.
+- Expanded and collapsed the mobile context summary.
+- Verified horoscope, health, development, and context action controls are present.
+- Switched between light and dark themes.
+- Confirmed `scrollWidth` equals viewport width at desktop and mobile sizes.
+- Browser console contains Vite debug and React development information only; no runtime errors.
+
+final result: passed
+
+---
+
 # Business Knowledge Extension QA
 
 ## Comparison Target

@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import {
   Activity,
-  ArrowRight,
+  BatteryLow,
   BookOpen,
   BriefcaseBusiness,
   CalendarDays,
   Check,
   ChevronDown,
+  CircleCheck,
   Compass,
   Droplets,
   Dumbbell,
   FileText,
   Moon,
   Pill,
+  Play,
   Sun,
+  TrendingUp,
   TriangleAlert,
   X,
   Plus,
@@ -49,9 +52,11 @@ import {
   StatusBadge,
 } from "./atoms";
 
+const STATE_ICONS = [BatteryLow, CircleCheck, TrendingUp, TriangleAlert];
 const STATE_VALUES = STATE_OPTIONS.map((label, index) => ({
   label,
   value: ["low", "collected", "strong", "overloaded"][index],
+  Icon: STATE_ICONS[index],
 }));
 
 const OUTCOME_STATUS = [
@@ -118,7 +123,20 @@ function astroAdvice(date) {
   return "Собери информацию и держи фактический приоритет выше контекста.";
 }
 
-export function TimelineBlock({ id, title, summary, active, complete, children, className = "", bare = false, guidance = null }) {
+export function TimelineBlock({
+  id,
+  title,
+  summary,
+  active,
+  complete,
+  children,
+  className = "",
+  bare = false,
+  guidance = null,
+  progress = "",
+  onActivate,
+  Icon,
+}) {
   const [open, setOpen] = useState(active);
   useEffect(() => setOpen(active), [active]);
   if (bare) return (
@@ -133,10 +151,29 @@ export function TimelineBlock({ id, title, summary, active, complete, children, 
   );
   return (
     <section className={`timeline-block ${id}${open ? " is-open" : ""}${active ? " is-current" : ""}${complete ? " is-complete" : ""} ${className}`.trim()}>
-      <button type="button" className="timeline-heading" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        <span><span className="timeline-dot" aria-hidden="true" /><strong>{title}</strong><small>{summary}</small></span>
-        <span aria-hidden="true">{complete ? "✓" : open ? "−" : "+"}</span>
+      <button
+        type="button"
+        className="timeline-heading"
+        onClick={() => {
+          if (!active) onActivate?.();
+          setOpen((value) => !value);
+        }}
+        aria-expanded={open}
+      >
+        <span className="timeline-leading">
+          <span className="timeline-phase-icon" aria-hidden="true">{Icon && <Icon size={21} />}</span>
+          <span className="timeline-title-copy">
+            <span><strong>{title}</strong>{progress && <b>{progress}</b>}</span>
+            <small>{summary}</small>
+          </span>
+        </span>
+        <span className="timeline-trailing">
+          {active && <span className="timeline-current-label">Сейчас</span>}
+          {complete && <CircleCheck size={18} aria-label="Завершено" />}
+          <ChevronDown size={19} aria-hidden="true" />
+        </span>
       </button>
+      {open && guidance && <div className="timeline-guidance">{guidance}</div>}
       <div className="timeline-content">{children}</div>
     </section>
   );
@@ -146,7 +183,6 @@ export function DailyCompass({ s, up, date, today, northStar, deals, yesterdayOu
   const protocol = s.dailyProtocol;
   const outcome = s.primaryOutcome;
   const text = primaryOutcomeText(outcome);
-  const [editingState, setEditingState] = useState(!protocol.compass.stateBand);
   const dueDeal = deals.find((deal) => ["overdue", "today"].includes(dealStatus(deal, date).kind) && deal.nextStep);
   const suggestions = [
     northStar && { label: `Главный ориентир: ${northStar}`, text: northStar, source: "north-star" },
@@ -168,9 +204,16 @@ export function DailyCompass({ s, up, date, today, northStar, deals, yesterdayOu
     <section className={`command-compass${s.dayStarted ? " is-started" : ""}`}>
       <div className="command-compass-state">
         <div className="command-compass-label"><Compass size={19} aria-hidden="true" /><span className="eyebrow">Состояние</span></div>
-        {protocol.compass.stateBand && !editingState ? <button type="button" className="command-state-summary" onClick={() => setEditingState(true)}>
-          <span><strong>{STATE_VALUES.find((item) => item.value === protocol.compass.stateBand)?.label}</strong><small>спокойствие · фокус · решимость</small></span><span>Изменить</span>
-        </button> : <ChoiceChips options={STATE_VALUES} value={protocol.compass.stateBand} onChange={(stateBand) => { updateCompass({ stateBand }); setEditingState(false); }} />}
+        <div className="dayflow-state-options" role="radiogroup" aria-label="Состояние">
+          {STATE_VALUES.map(({ label, value, Icon }) => <button
+            type="button"
+            role="radio"
+            aria-checked={protocol.compass.stateBand === value}
+            className={protocol.compass.stateBand === value ? `active ${value}` : value}
+            key={value}
+            onClick={() => updateCompass({ stateBand: value })}
+          ><Icon size={18} aria-hidden="true" /><span>{label}</span></button>)}
+        </div>
       </div>
 
       <div className="command-outcome">
@@ -187,7 +230,7 @@ export function DailyCompass({ s, up, date, today, northStar, deals, yesterdayOu
       <div className="command-start">
         <span className="eyebrow">{s.dayStarted ? "День запущен" : "Готовность"}</span>
         <Btn primary big disabled={!protocol.compass.stateBand || !text.trim()} onClick={primaryAction}>
-          {s.dayStarted ? "Продолжить фокус" : date === today ? "Начать сегодня" : "Запустить выбранный день"}<ArrowRight size={17} aria-hidden="true" />
+          <Play size={17} fill="currentColor" aria-hidden="true" />{s.dayStarted ? "Продолжить фокус" : date === today ? "Начать сегодня" : "Запустить выбранный день"}
         </Btn>
         {!s.dayStarted && <small>Сначала состояние и один измеримый факт.</small>}
       </div>
@@ -296,7 +339,7 @@ export function ConditionalProteinCard({ profile, morning, updateMorning, disabl
   );
 }
 
-export function MorningColumn({ s, up, profile, date, active, bare = false, guidance = null }) {
+export function MorningColumn({ s, up, profile, date, active, bare = false, guidance = null, progress = "", onActivate }) {
   const morning = s.dailyProtocol.morning;
   const medication = profile.medications.find((item) => item.id === "mounjaro" && item.active);
   const updateMorning = (patch) => up((prev) => ({ dailyProtocol: { ...prev.dailyProtocol, morning: { ...prev.dailyProtocol.morning, ...patch } } }));
@@ -305,7 +348,7 @@ export function MorningColumn({ s, up, profile, date, active, bare = false, guid
   const electrolytesDone = morning.supplementEvents.includes("electrolytes");
   const complete = morning.waterMl >= 500 && electrolytesDone && (!mounjaroDue || morning.medicationStatus !== "pending");
   return (
-    <TimelineBlock id="morning" title="Утро" summary="Быстрый запуск без завтрака" active={active} complete={complete} bare={bare} guidance={guidance}>
+    <TimelineBlock id="morning" title="Утро" summary="Быстрый запуск без завтрака" active={active} complete={complete} bare={bare} guidance={guidance} progress={progress} onActivate={onActivate} Icon={Sun}>
       <MedicationSequenceCard date={date} morning={morning} updateMorning={updateMorning} medication={medication} />
       <div className="routine-group first">
         <div className="routine-heading"><span className="eyebrow">После пробуждения</span><small>первый шаг дня</small></div>
@@ -435,11 +478,11 @@ export function TrainingRecommendationCard({ date, plan, protocolTraining, updat
   );
 }
 
-export function SportColumn({ s, up, date, plan, updatePlan, active, bare = false, guidance = null }) {
+export function SportColumn({ s, up, date, plan, updatePlan, active, bare = false, guidance = null, progress = "", onActivate }) {
   const training = s.dailyProtocol.training;
   const updateTraining = (patch) => up((prev) => ({ dailyProtocol: { ...prev.dailyProtocol, training: { ...prev.dailyProtocol.training, ...patch } } }));
   return (
-    <TimelineBlock id="sport" title="Спорт" summary={training.status === "done" ? "Тренировка завершена" : "Одна рекомендация по готовности"} active={active} complete={training.status === "done"} bare={bare} guidance={guidance}>
+    <TimelineBlock id="sport" title="Спорт" summary={training.status === "done" ? "Тренировка завершена" : "Одна рекомендация по готовности"} active={active} complete={training.status === "done"} bare={bare} guidance={guidance} progress={progress} onActivate={onActivate} Icon={Dumbbell}>
       <TrainingRecommendationCard date={date} plan={plan} protocolTraining={training} updateTraining={updateTraining} updatePlan={updatePlan} />
     </TimelineBlock>
   );
@@ -559,7 +602,7 @@ export function MeetingPrepSheet({ value, onChange, onClose }) {
   );
 }
 
-export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, bare = false, guidance = null }) {
+export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, bare = false, guidance = null, progress = "", onActivate }) {
   const work = s.dailyProtocol.work;
   const outcome = s.primaryOutcome;
   const text = primaryOutcomeText(outcome);
@@ -569,7 +612,7 @@ export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, b
   const chairman = deals.filter((deal) => deal.chairmanOnly).slice(0, 3);
   const advice = astroAdvice(today);
   return (
-    <TimelineBlock id="work" title="Работа" summary={bare ? "Фокус, сделки и подготовка" : text || "Главный результат ещё не задан"} active={active} complete={outcome.status === "done"} className="work-dominant" bare={bare} guidance={guidance}>
+    <TimelineBlock id="work" title="Работа" summary={bare ? "Фокус, сделки и подготовка" : text || "Главный результат ещё не задан"} active={active} complete={outcome.status === "done"} className="work-dominant" bare={bare} guidance={guidance} progress={progress} onActivate={onActivate} Icon={BriefcaseBusiness}>
       {bare ? <div className="work-phase-status"><div><span className="eyebrow">Статус результата</span><p>{text ? "Результат задан в Компасе. Здесь только исполнение." : "Сначала задай измеримый результат в Компасе."}</p></div><ChoiceChips green options={OUTCOME_STATUS} value={outcome.status} onChange={(status) => updateOutcome({ status })} /></div> : <div className="work-outcome">
         <div className="outcome-head"><span className="eyebrow">Главный результат</span>{outcome.dueAt && <span className="num">{outcome.dueAt}</span>}</div>
         <h2>{text || "Задай результат в Компасе дня"}</h2>
@@ -594,7 +637,7 @@ export function WorkColumn({ s, up, deals, setDeals, today, northStar, active, b
   );
 }
 
-export function EveningShutdownSheet({ s, up, deals, profile, active, bare = false, guidance = null }) {
+export function EveningShutdownSheet({ s, up, deals, profile, active, bare = false, guidance = null, progress = "", onActivate }) {
   const evening = s.dailyProtocol.evening;
   const morning = s.dailyProtocol.morning;
   const outcome = s.primaryOutcome;
@@ -616,7 +659,7 @@ export function EveningShutdownSheet({ s, up, deals, profile, active, bare = fal
   ];
   const complete = evening.shutdown;
   return (
-    <TimelineBlock id="evening" title="Вечер" summary={complete ? "Рабочий день закрыт" : "Закрыть за 60–90 секунд"} active={active} complete={complete} bare={bare} guidance={guidance}>
+    <TimelineBlock id="evening" title="Вечер" summary={complete ? "Рабочий день закрыт" : "Закрыть за 60–90 секунд"} active={active} complete={complete} bare={bare} guidance={guidance} progress={progress} onActivate={onActivate} Icon={Moon}>
       <SupplementChecklist profile={profile} morning={morning} updateMorning={updateMorning} timings="pre_dinner" title="Перед ужином" note="условный шаг" />
       <SupplementChecklist profile={profile} morning={morning} updateMorning={updateMorning} timings="pre_sleep" title="За 1–2 часа до сна" />
       <details className="column-details">
@@ -634,13 +677,6 @@ export function EveningShutdownSheet({ s, up, deals, profile, active, bare = fal
     </TimelineBlock>
   );
 }
-
-const PHASES = [
-  { id: "morning", label: "Утро", Icon: Sun },
-  { id: "sport", label: "Спорт", Icon: Dumbbell },
-  { id: "work", label: "Работа", Icon: BriefcaseBusiness },
-  { id: "evening", label: "Вечер", Icon: Moon },
-];
 
 function phaseCounts(s, profile, date, deals) {
   const morning = s.dailyProtocol.morning;
@@ -671,16 +707,6 @@ function phaseCounts(s, profile, date, deals) {
   };
 }
 
-function CommandPhaseTabs({ phase, setPhase, counts }) {
-  return <div className="command-phase-tabs" role="tablist" aria-label="Этапы дня">
-    {PHASES.map(({ id, label, Icon }) => <button type="button" role="tab" aria-selected={phase === id} className={phase === id ? "active" : ""} key={id} onClick={() => setPhase(id)}>
-      <Icon size={20} aria-hidden="true" />
-      <span>{label}</span>
-      <small>{counts[id].done}/{counts[id].max}</small>
-    </button>)}
-  </div>;
-}
-
 function TodayHealthRail({ s, profile, setPhase }) {
   const morning = s.dailyProtocol.morning;
   const training = s.dailyProtocol.training;
@@ -700,27 +726,22 @@ function TodayHealthRail({ s, profile, setPhase }) {
   </section>;
 }
 
-function CommandRail({ s, up, date, profile, setPhase, phase, onOpenForecast, onOpenDevelopment, onOpenHealth }) {
-  const [open, setOpen] = useState(true);
-  return <aside className={`command-rail${open ? " open" : ""}${phase === "morning" ? " morning-horoscope" : ""}`}>
+function CommandRail({ s, up, date, profile, setPhase, onOpenForecast, onOpenDevelopment, onOpenHealth }) {
+  const [open, setOpen] = useState(false);
+  return <aside className={`command-rail${open ? " open" : ""}`}>
     <button type="button" className="command-rail-toggle" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-      <span><span className="eyebrow">{phase === "morning" ? "Гороскопы" : "Сводка дня"}</span><strong>{phase === "morning" ? "Личный день, Луна, окна и риски" : "Контекст, здоровье, развитие"}</strong></span><ChevronDown size={18} aria-hidden="true" />
+      <span><span className="eyebrow">Контекст дня</span><strong>Гороскопы, здоровье и развитие</strong></span><ChevronDown size={18} aria-hidden="true" />
     </button>
     <div className="command-rail-content">
       <TodayForecast date={date} compact onOpen={onOpenForecast} />
-      {phase === "morning" ? <section className="command-rail-section morning-horoscope-focus">
-        <div className="command-rail-heading"><span className="eyebrow">Фокус утра</span><StatusBadge tone="gold">ориентир</StatusBadge></div>
-        <p>{astroAdvice(date)}</p>
-        <small>Гороскоп задаёт контекст. Решение принимается по фактам, срокам и ответственности.</small>
-      </section> : <>
-        <TodayHealthRail s={s} profile={profile} setPhase={setPhase} />
-        <section className="command-rail-section">
-          <div className="command-rail-heading"><span className="eyebrow">Развитие</span><button type="button" className="rail-link" onClick={onOpenDevelopment}>Открыть</button></div>
-          <Development s={s} up={up} date={date} rail />
-        </section>
-      </>}
+      <TodayHealthRail s={s} profile={profile} setPhase={setPhase} />
+      <section className="command-rail-section">
+        <div className="command-rail-heading"><span className="eyebrow">Развитие</span><button type="button" className="rail-link" onClick={onOpenDevelopment}>Открыть</button></div>
+        <Development s={s} up={up} date={date} rail />
+      </section>
       <div className="command-context-actions">
-        <button type="button" onClick={onOpenHealth}>Схема здоровья</button>
+        <button type="button" onClick={onOpenForecast}>Расчёт</button>
+        <button type="button" onClick={onOpenHealth}>Здоровье</button>
         <button type="button" onClick={onOpenDevelopment}>ИИ по развитию</button>
       </div>
     </div>
@@ -773,21 +794,16 @@ function FullRitualPrompt({ s, up }) {
 export function DailyColumnsGrid({ s, up, date, deals, setDeals, northStar, profile, plan, updatePlan, phase, setPhase, onOpenForecast, onOpenDevelopment, onOpenHealth }) {
   const counts = phaseCounts(s, profile, date, deals);
   const guidance = <FullRitualPrompt s={s} up={up} />;
+  const progress = (id) => `${counts[id].done}/${counts[id].max}`;
   return (
     <div className="command-day-board">
-      <CommandPhaseTabs phase={phase} setPhase={setPhase} counts={counts} />
-      <div className="command-board-layout">
-        <div className="command-active-phase" role="tabpanel">
-          {phase === "morning" && <MorningColumn s={s} up={up} profile={profile} date={date} active bare guidance={guidance} />}
-          {phase === "sport" && <SportColumn s={s} up={up} date={date} plan={plan} updatePlan={updatePlan} active bare guidance={guidance} />}
-          {phase === "work" && <WorkColumn s={s} up={up} deals={deals} setDeals={setDeals} today={date} northStar={northStar} active bare guidance={guidance} />}
-          {phase === "evening" && <EveningShutdownSheet s={s} up={up} deals={deals} profile={profile} active bare guidance={guidance} />}
-        </div>
-        <CommandRail s={s} up={up} date={date} profile={profile} setPhase={setPhase} phase={phase} onOpenForecast={onOpenForecast} onOpenDevelopment={onOpenDevelopment} onOpenHealth={onOpenHealth} />
+      <div className="dayflow-timeline" aria-label="Этапы дня">
+        <MorningColumn s={s} up={up} profile={profile} date={date} active={phase === "morning"} guidance={guidance} progress={progress("morning")} onActivate={() => setPhase("morning")} />
+        <SportColumn s={s} up={up} date={date} plan={plan} updatePlan={updatePlan} active={phase === "sport"} progress={progress("sport")} onActivate={() => setPhase("sport")} />
+        <WorkColumn s={s} up={up} deals={deals} setDeals={setDeals} today={date} northStar={northStar} active={phase === "work"} progress={progress("work")} onActivate={() => setPhase("work")} />
+        <EveningShutdownSheet s={s} up={up} deals={deals} profile={profile} active={phase === "evening"} progress={progress("evening")} onActivate={() => setPhase("evening")} />
       </div>
-      {phase !== "evening" && <button type="button" className="evening-next-strip" onClick={() => setPhase("evening")}>
-        <Moon size={23} aria-hidden="true" /><span><small className="eyebrow">Вечер · следующий шаг</small><strong>{s.dailyProtocol.evening.shutdown ? "Рабочий день закрыт" : "Закрыть день за 60–90 секунд"}</strong></span><span>Открыть <ArrowRight size={17} aria-hidden="true" /></span>
-      </button>}
+      <CommandRail s={s} up={up} date={date} profile={profile} setPhase={setPhase} onOpenForecast={onOpenForecast} onOpenDevelopment={onOpenDevelopment} onOpenHealth={onOpenHealth} />
     </div>
   );
 }

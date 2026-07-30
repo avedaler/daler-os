@@ -1044,6 +1044,694 @@ input[type="date"].input, input[type="time"].input, input[type="number"].input {
   .calendar-metrics span { white-space: normal; line-height: 1.25; }
 }
 
+/* Adaptive Dayflow */
+:root {
+  --primary: #6f91ff;
+  --primary-hover: #88a5ff;
+  --primary-soft: rgba(111, 145, 255, .11);
+  --primary-border: rgba(111, 145, 255, .55);
+  --on-primary: #ffffff;
+}
+
+:root[data-theme="light"] {
+  --bg: #f8fafc;
+  --sidebar-bg: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #f7f9fc;
+  --surface-quiet: #f3f6fa;
+  --border: #d6dde8;
+  --border-soft: rgba(38, 50, 68, .11);
+  --border-strong: #aeb9ca;
+  --text: #171b24;
+  --muted: #5f6979;
+  --muted-2: #8a94a4;
+  --primary: #1558dc;
+  --primary-hover: #1049ba;
+  --primary-soft: rgba(21, 88, 220, .07);
+  --primary-border: rgba(21, 88, 220, .42);
+  --on-primary: #ffffff;
+}
+
+.kicker,
+.eyebrow {
+  letter-spacing: 0;
+}
+
+@media (min-width: 901px) {
+  .app-shell {
+    padding: 78px 0 0;
+  }
+
+  .desktop-sidebar {
+    inset: 0 0 auto;
+    width: 100%;
+    height: 78px;
+    display: grid;
+    grid-template-columns: 230px minmax(520px, 1fr) auto;
+    align-items: stretch;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--sidebar-bg);
+    padding: 0 clamp(22px, 3vw, 48px);
+  }
+
+  .brand {
+    width: auto;
+    min-width: 190px;
+    min-height: 77px;
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .brand:hover {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .brand-wordmark {
+    font-size: 21px;
+  }
+
+  .desktop-sidebar nav {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    height: 100%;
+  }
+
+  .desktop-sidebar nav button {
+    position: relative;
+    min-width: 120px;
+    min-height: 77px;
+    justify-content: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 0;
+    padding: 0 14px;
+  }
+
+  .desktop-sidebar nav button:hover {
+    border-color: transparent;
+    color: var(--text);
+  }
+
+  .desktop-sidebar nav button.active {
+    border-color: transparent;
+    background: transparent;
+    color: var(--primary);
+  }
+
+  .desktop-sidebar nav button.active::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    bottom: 0;
+    left: 14px;
+    height: 3px;
+    background: var(--primary);
+  }
+
+  .desktop-sidebar nav button.active span {
+    color: var(--primary);
+  }
+
+  .desktop-sidebar nav b {
+    color: var(--red);
+  }
+
+  .desktop-sidebar > p {
+    display: none;
+  }
+
+  .workspace {
+    width: min(100%, 1120px);
+    padding: 28px 32px 72px;
+  }
+
+  .workspace-wide {
+    width: min(100%, 1480px);
+    padding-right: clamp(28px, 3vw, 52px);
+    padding-left: clamp(28px, 3vw, 52px);
+  }
+}
+
+.workspace-wide .page-header {
+  min-height: 58px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.workspace-wide .page-header h1 {
+  margin-top: 4px;
+  font-family: var(--sans);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.workspace-wide .page-header .kicker {
+  color: var(--primary);
+}
+
+@media (min-width: 901px) {
+  .workspace-wide .page-header {
+    min-height: 50px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+  }
+
+  .workspace-wide .page-header h1 {
+    margin-top: 2px;
+    font-size: 21px;
+  }
+
+  .workspace-wide .today-screen .day-switcher {
+    min-height: 44px;
+    margin-bottom: 8px;
+  }
+
+  .workspace-wide .today-screen .day-switcher-picker,
+  .workspace-wide .today-screen .day-switcher-presets button {
+    min-height: 38px;
+    height: 38px;
+  }
+}
+
+.today-screen .day-switcher {
+  min-height: 48px;
+  justify-content: flex-end;
+  border: 0;
+  background: transparent;
+  margin-bottom: 18px;
+  padding: 0;
+}
+
+.today-screen .day-switcher-main {
+  grid-template-columns: 40px minmax(210px, 280px) 40px;
+}
+
+.today-screen .day-switcher-picker {
+  border-color: var(--border);
+  color: var(--primary);
+}
+
+.today-screen .day-switcher-presets button.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.command-compass {
+  grid-template-columns: minmax(520px, 1fr) minmax(520px, 1.1fr);
+  grid-template-areas:
+    "state outcome"
+    "start start";
+  gap: 0 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  margin-bottom: 20px;
+  overflow: visible;
+}
+
+.command-compass > div,
+.command-compass.is-started > div {
+  padding: 14px 2px;
+}
+
+.command-compass-state {
+  grid-area: state;
+}
+
+.command-outcome {
+  grid-area: outcome;
+}
+
+.command-start {
+  grid-area: start;
+}
+
+.command-compass-state,
+.command-outcome {
+  border-right: 0;
+}
+
+.command-compass-label {
+  min-height: 24px;
+  color: var(--primary);
+  margin-bottom: 9px;
+}
+
+.dayflow-state-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.dayflow-state-options button {
+  min-width: 0;
+  min-height: 70px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: left;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.dayflow-state-options button:last-child {
+  border-right: 0;
+}
+
+.dayflow-state-options button:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.dayflow-state-options button.low svg,
+.dayflow-state-options button.overloaded svg {
+  color: var(--red);
+}
+
+.dayflow-state-options button.collected svg {
+  color: var(--green);
+}
+
+.dayflow-state-options button.strong svg {
+  color: var(--primary);
+}
+
+.dayflow-state-options button.active {
+  z-index: 1;
+  background: var(--primary-soft);
+  color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.command-outcome .outcome-head {
+  min-height: 24px;
+  margin-bottom: 9px;
+}
+
+.command-outcome .field {
+  margin: 0;
+}
+
+.command-outcome .input,
+.command-compass.is-started .command-outcome .input {
+  min-height: 70px;
+  height: 70px;
+  border-color: var(--primary-border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: var(--sans);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.25;
+  padding: 12px 15px;
+}
+
+.command-compass-options {
+  margin-top: 8px;
+}
+
+.command-start {
+  min-height: 64px;
+  grid-template-columns: auto minmax(280px, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.command-start .btn,
+.command-compass.is-started .command-start .btn {
+  min-height: 50px;
+  border-radius: 5px;
+}
+
+.command-start small {
+  max-width: 260px;
+}
+
+.workspace-wide .btn.primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.workspace-wide .btn.primary:hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+}
+
+.command-day-board {
+  gap: 18px;
+}
+
+.dayflow-timeline {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.dayflow-timeline .timeline-block {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.dayflow-timeline .timeline-block:last-child {
+  border-bottom: 0;
+}
+
+.dayflow-timeline .timeline-block.is-current {
+  border-color: var(--border);
+}
+
+.dayflow-timeline .timeline-heading {
+  min-height: 70px;
+  border: 0;
+  background: transparent;
+  padding: 10px 18px;
+}
+
+.dayflow-timeline .timeline-heading:hover {
+  background: var(--surface-raised);
+}
+
+.dayflow-timeline .timeline-block.is-current .timeline-heading {
+  background: var(--primary-soft);
+}
+
+.dayflow-timeline .timeline-heading > .timeline-leading {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.timeline-phase-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.timeline-block.is-current .timeline-phase-icon {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.timeline-block.is-complete .timeline-phase-icon {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.timeline-title-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.timeline-title-copy > span {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-title-copy strong {
+  font-size: 17px;
+}
+
+.timeline-title-copy b {
+  color: var(--muted);
+  font: 500 11px/1 var(--mono);
+}
+
+.dayflow-timeline .timeline-title-copy small {
+  grid-column: auto;
+  min-width: 0;
+  color: var(--muted);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-block.is-current .timeline-title-copy strong {
+  color: var(--primary);
+}
+
+.timeline-trailing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.timeline-trailing > svg:last-child {
+  transition: transform .18s ease;
+}
+
+.timeline-block.is-open .timeline-trailing > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.timeline-current-label {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 0 10px;
+  font: 600 10px/1 var(--mono);
+  text-transform: uppercase;
+}
+
+.dayflow-timeline .timeline-content {
+  display: none;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 18px 22px 24px 78px;
+}
+
+.dayflow-timeline .timeline-block.is-open .timeline-content {
+  display: block;
+}
+
+.timeline-guidance {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px 22px 0 78px;
+}
+
+.timeline-guidance .command-ritual-prompt {
+  width: 100%;
+  border-color: var(--primary-border);
+  background: var(--primary-soft);
+}
+
+.command-rail-content {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.command-rail-section {
+  min-width: 0;
+  min-height: 170px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding: 17px 18px;
+}
+
+.command-rail-section:nth-child(3) {
+  border-right: 0;
+}
+
+.command-rail-heading {
+  min-height: 30px;
+}
+
+.command-context-grid strong {
+  font-family: var(--sans);
+  font-size: 15px;
+}
+
+.command-context-actions {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  gap: 0;
+}
+
+.command-context-actions button {
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.command-context-actions button:last-child {
+  border-right: 0;
+}
+
+@media (max-width: 1180px) {
+  .command-compass {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "state"
+      "outcome"
+      "start";
+    gap: 0;
+  }
+
+  .command-compass-state,
+  .command-outcome {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .command-start {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    padding-top: 0;
+  }
+
+  .desktop-sidebar {
+    display: none;
+  }
+
+  .workspace,
+  .workspace-wide {
+    width: 100%;
+    padding-top: 20px;
+  }
+
+  .command-rail-toggle {
+    display: flex;
+    border-radius: 6px;
+  }
+
+  .command-rail-content {
+    display: none;
+    grid-template-columns: 1fr;
+    margin-top: 10px;
+  }
+
+  .command-rail.open .command-rail-content {
+    display: grid;
+  }
+
+  .command-rail-section {
+    min-height: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 700px) {
+  .workspace,
+  .workspace-wide {
+    padding: 12px 12px calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .today-screen .day-switcher {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .dayflow-state-options {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dayflow-state-options button:nth-child(2) {
+    border-right: 0;
+  }
+
+  .dayflow-state-options button:nth-child(-n+2) {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .command-outcome .input,
+  .command-compass.is-started .command-outcome .input {
+    min-height: 74px;
+    height: 74px;
+    font-size: 20px;
+  }
+
+  .command-start {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .command-start > .eyebrow {
+    display: none;
+  }
+
+  .command-start small {
+    max-width: none;
+  }
+
+  .dayflow-timeline .timeline-heading {
+    min-height: 64px;
+    padding: 8px 11px;
+  }
+
+  .dayflow-timeline .timeline-heading > .timeline-leading {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .timeline-phase-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .timeline-current-label {
+    display: none;
+  }
+
+  .timeline-title-copy small {
+    max-width: 190px;
+  }
+
+  .dayflow-timeline .timeline-content {
+    padding: 14px 12px 18px;
+  }
+
+  .timeline-guidance {
+    padding: 10px 12px 0;
+  }
+}
+
 @media print {
   .app-shell { display: none !important; }
 }
