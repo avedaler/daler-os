@@ -190,6 +190,11 @@ assert.deepEqual(migrateBusinessChat([{
   content: "Разбери файл",
   attachments: [{ name: "plan.pdf", mediaType: "application/pdf", size: 2048, kind: "file", data: "secret-binary" }],
 }])[0].attachments, [{ name: "plan.pdf", mediaType: "application/pdf", size: 2048, kind: "file" }]);
+assert.equal(
+  migrateBusinessChat([{ role: "user", content: "Б".repeat(25000) }])[0].content.length,
+  20000,
+  "business chat preserves messages up to the shared 20,000 character limit",
+);
 
 const developmentKnowledge = migrateDevelopmentKnowledge({
   resources: [{
@@ -230,5 +235,10 @@ assert.deepEqual(migrateDevelopmentChat([{
   content: "Разбери практику",
   attachments: [{ name: "notes.md", mediaType: "text/markdown", size: 100, kind: "text", content: "private" }],
 }])[0].attachments, [{ name: "notes.md", mediaType: "text/markdown", size: 100, kind: "text" }]);
+assert.equal(
+  migrateDevelopmentChat([{ role: "user", content: "Р".repeat(25000) }])[0].content.length,
+  20000,
+  "development chat preserves messages up to the shared 20,000 character limit",
+);
 
 console.log("Migration and protocol checks passed.");

@@ -58,4 +58,21 @@ assert.equal(learning.quality.level, "moderate");
 assert.equal(learning.practices[0].durationDays, 7);
 assert.match(learning.warnings[0], /причинность/);
 
+const essayLearning = parseDevelopmentKnowledge(JSON.stringify({
+  summary: "Авторская практика требует проверки.",
+  quality: { level: "strong", reason: "Это личный опыт автора, без эмпирического исследования." },
+  claims: [],
+  practices: [{
+    title: "Проверка авторской практики",
+    protocol: "Проверять практику семь дней.",
+    durationDays: 7,
+    metric: "Ежедневная оценка",
+    evidence: "strong",
+    risks: [],
+  }],
+  warnings: [],
+}));
+assert.equal(essayLearning.quality.level, "moderate", "an essay cannot be classified as strong evidence");
+assert.equal(essayLearning.practices[0].evidence, "moderate", "a practice cannot exceed its source quality");
+
 console.log("Public web source checks passed.");

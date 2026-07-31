@@ -120,7 +120,7 @@ export function migrateDevelopmentChat(value) {
       const model = cleanText(item.model, 120);
       return {
         role: item.role,
-        content: cleanText(item.content, 12000),
+        content: cleanText(item.content, 20000),
         ...(model ? { model } : {}),
         source: item.source && typeof item.source === "object" ? item.source : null,
         attachments: cleanAttachmentMeta(item.attachments),

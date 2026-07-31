@@ -27,7 +27,7 @@ const MODEL_FALLBACKS = [
 ];
 const ALLOWED_MODES = new Set(["forecast", "development", "business"]);
 const MAX_MESSAGES = 12;
-const MAX_MESSAGE_LENGTH = 4000;
+const MAX_MESSAGE_LENGTH = 20_000;
 const MAX_CONTEXT_LENGTH = 70000;
 const MAX_RESOURCE_CONTENT = 60000;
 let modelCatalogCache = { expiresAt: 0, models: [] };
@@ -60,6 +60,8 @@ const DEVELOPMENT_INGEST_PROMPT = `Ты — аналитик источнико�
 Правила:
 - не более 8 утверждений, 6 практик и 8 предупреждений;
 - оценивай силу доказательств только по материалу, не выдумывай исследования;
+- уровень strong допустим только когда сам материал приводит качественные эмпирические исследования, систематический обзор или несколько независимых подтверждений; известность автора, уверенный тон и внутренняя логика недостаточны;
+- эссе, личный опыт, мнение эксперта или единичный кейс не могут получить уровень strong;
 - отделяй мнение, анекдот и маркетинг от проверяемого утверждения;
 - каждая практика должна быть маленьким личным экспериментом с одной наблюдаемой метрикой;
 - для медицинских, психиатрических, лекарственных, экстремальных или потенциально опасных советов не предлагай самостоятельный эксперимент и явно добавь предупреждение;
@@ -180,11 +182,17 @@ export function parseDevelopmentKnowledge(text) {
   const value = JSON.parse(withoutFences.slice(start, end + 1));
   const qualityLevels = new Set(["strong", "moderate", "weak", "unknown"]);
   const supportLevels = new Set(["supported", "plausible", "unsupported"]);
+  const qualityReason = cleanText(value.quality?.reason, 800);
+  let qualityLevel = qualityLevels.has(value.quality?.level) ? value.quality.level : "unknown";
+  if (qualityLevel === "strong" && /эссе|мнение|анекдот|личн(?:ый|ого) опыт|не (?:эмпир|науч|исслед)|авторск(?:ая|ой|ую) позици/i.test(qualityReason)) {
+    qualityLevel = "moderate";
+  }
+  const evidenceRank = { unknown: 0, weak: 1, moderate: 2, strong: 3 };
   return {
     summary: cleanText(value.summary),
     quality: {
-      level: qualityLevels.has(value.quality?.level) ? value.quality.level : "unknown",
-      reason: cleanText(value.quality?.reason, 800),
+      level: qualityLevel,
+      reason: qualityReason,
     },
     claims: Array.isArray(value.claims) ? value.claims
       .slice(0, 8)
@@ -200,7 +208,10 @@ export function parseDevelopmentKnowledge(text) {
         protocol: cleanText(practice?.protocol),
         durationDays: Math.max(3, Math.min(90, Number(practice?.durationDays) || 14)),
         metric: cleanText(practice?.metric, 500),
-        evidence: qualityLevels.has(practice?.evidence) ? practice.evidence : "unknown",
+        evidence: (() => {
+          const evidence = qualityLevels.has(practice?.evidence) ? practice.evidence : "unknown";
+          return evidenceRank[evidence] > evidenceRank[qualityLevel] ? qualityLevel : evidence;
+        })(),
         risks: cleanList(practice?.risks).slice(0, 6),
       }))
       .filter((practice) => practice.title && practice.protocol) : [],

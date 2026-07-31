@@ -14,6 +14,7 @@ import {
 
 const MAX_SAVED_MESSAGES = 60;
 const MAX_SENT_MESSAGES = 12;
+const MAX_MESSAGE_LENGTH = 20_000;
 const AUTO_SPEAK_KEY = "daler-os-ai-auto-speak";
 const LATEST_FORECAST_KEY = "daler-os-ai-forecast-latest";
 const MODEL_STORAGE_KEY = "daler-os-ai-model";
@@ -490,6 +491,7 @@ export default function AiChat({
               autoFocus
               value={editingDraft}
               onChange={(event) => setEditingDraft(event.target.value)}
+              maxLength={MAX_MESSAGE_LENGTH}
               onKeyDown={(event) => {
                 if (event.key === "Escape") cancelEdit();
                 if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -498,7 +500,6 @@ export default function AiChat({
                 }
               }}
               rows={4}
-              maxLength={4000}
               aria-label="Изменить сообщение"
             />
             <small>Следующие ответы будут удалены и сформированы заново.</small>
@@ -573,7 +574,7 @@ export default function AiChat({
             }
           }}
           rows={3}
-          maxLength={4000}
+          maxLength={MAX_MESSAGE_LENGTH}
           placeholder={mode === "forecast" ? "Что этот прогноз значит для моих решений?" : mode === "business" ? "Опиши решение, рынок, риск или вставь ссылку YouTube…" : "Опиши ситуацию, решение или повторяющийся паттерн…"}
         />
         <button type="submit" disabled={!canSend || sending || preparingAttachments} aria-label="Отправить сообщение" title="Отправить"><Send size={18} aria-hidden="true" /></button>
