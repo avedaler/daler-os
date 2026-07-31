@@ -24,6 +24,8 @@ const syncable = (k) =>
     k === "code" ||
     k === "healthProfile" ||
     k === "trainingPlan" ||
+    k === "developmentKnowledge" ||
+    k === "developmentChat" ||
     k === "businessKnowledge" ||
     k === "businessChat"
   );

@@ -24,6 +24,8 @@ import {
   daysSinceExport,
   loadBusinessChat,
   loadBusinessKnowledge,
+  loadDevelopmentChat,
+  loadDevelopmentKnowledge,
   loadDay,
   loadCode,
   loadDeals,
@@ -34,6 +36,8 @@ import {
   saveDay,
   saveBusinessChat,
   saveBusinessKnowledge,
+  saveDevelopmentChat,
+  saveDevelopmentKnowledge,
   saveCode,
   saveDeals,
   saveHealthProfile,
@@ -51,6 +55,7 @@ import { hasLock, isUnlockedThisSession } from "./lib/lock";
 import { cloudConfigured, currentUser, subscribeCloudChanges, syncAll } from "./lib/cloud";
 import { defaultCodeState, migrateCodeState } from "./lib/code";
 import { emptyBusinessKnowledge, migrateBusinessChat, migrateBusinessKnowledge } from "./lib/business";
+import { emptyDevelopmentKnowledge, migrateDevelopmentChat, migrateDevelopmentKnowledge } from "./lib/development";
 
 const NAV = [
   ["today", "Сегодня", Compass],
@@ -89,13 +94,15 @@ function dayKicker(date, today) {
 }
 
 async function loadWorkspaceSnapshot(date) {
-  const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, rawCode, rawBusinessKnowledge, rawBusinessChat, previousReview] = await Promise.all([
+  const [rawDay, rawSettings, rawDeals, rawProfile, rawPlan, rawCode, rawDevelopmentKnowledge, rawDevelopmentChat, rawBusinessKnowledge, rawBusinessChat, previousReview] = await Promise.all([
     loadDay(date),
     loadSettings(),
     loadDeals(),
     loadHealthProfile(),
     loadTrainingPlan(),
     loadCode(),
+    loadDevelopmentKnowledge(),
+    loadDevelopmentChat(),
     loadBusinessKnowledge(),
     loadBusinessChat(),
     loadWeek(isoWeek(addDays(date, -7))),
@@ -112,6 +119,8 @@ async function loadWorkspaceSnapshot(date) {
     healthProfile: migrateHealthProfile(rawProfile, nextSettings),
     trainingPlan: migrateTrainingPlan(rawPlan),
     code: migrateCodeState(rawCode),
+    developmentKnowledge: migrateDevelopmentKnowledge(rawDevelopmentKnowledge),
+    developmentChat: migrateDevelopmentChat(rawDevelopmentChat),
     businessKnowledge: migrateBusinessKnowledge(rawBusinessKnowledge),
     businessChat: migrateBusinessChat(rawBusinessChat),
     northStar: previousReview?.nextWeek?.trim() || "",
@@ -130,6 +139,8 @@ export default function App() {
   const [healthProfile, setHealthProfile] = useState(defaultHealthProfile());
   const [trainingPlan, setTrainingPlan] = useState(defaultTrainingPlan());
   const [code, setCode] = useState(defaultCodeState());
+  const [developmentKnowledge, setDevelopmentKnowledge] = useState(emptyDevelopmentKnowledge());
+  const [developmentChat, setDevelopmentChat] = useState([]);
   const [businessKnowledge, setBusinessKnowledge] = useState(emptyBusinessKnowledge());
   const [businessChat, setBusinessChat] = useState([]);
   const [northStar, setNorthStar] = useState("");
@@ -162,6 +173,8 @@ export default function App() {
     setHealthProfile(snapshot.healthProfile);
     setTrainingPlan(snapshot.trainingPlan);
     setCode(snapshot.code);
+    setDevelopmentKnowledge(snapshot.developmentKnowledge);
+    setDevelopmentChat(snapshot.developmentChat);
     setBusinessKnowledge(snapshot.businessKnowledge);
     setBusinessChat(snapshot.businessChat);
     setNorthStar(snapshot.northStar);
@@ -393,6 +406,24 @@ export default function App() {
     });
   }, []);
 
+  const updateDevelopmentKnowledge = useCallback((nextOrPatch) => {
+    setDevelopmentKnowledge((previous) => {
+      const candidate = typeof nextOrPatch === "function" ? nextOrPatch(previous) : nextOrPatch;
+      const next = migrateDevelopmentKnowledge(candidate);
+      saveDevelopmentKnowledge(next);
+      return next;
+    });
+  }, []);
+
+  const updateDevelopmentChat = useCallback((nextOrPatch) => {
+    setDevelopmentChat((previous) => {
+      const candidate = typeof nextOrPatch === "function" ? nextOrPatch(previous) : nextOrPatch;
+      const next = migrateDevelopmentChat(candidate);
+      saveDevelopmentChat(next);
+      return next;
+    });
+  }, []);
+
   const updateBusinessChat = useCallback((nextOrPatch) => {
     setBusinessChat((previous) => {
       const candidate = typeof nextOrPatch === "function" ? nextOrPatch(previous) : nextOrPatch;
@@ -483,7 +514,7 @@ export default function App() {
           {tab === "today" && <Today s={s} up={up} deals={deals} setDeals={setDeals} date={date} today={now.date} setDate={selectDate} time={now.time} northStar={northStar} healthProfile={healthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} onOpenForecast={() => openMore("forecast")} onOpenDevelopment={() => openMore("development")} onOpenHealth={() => openMore("health")} />}
           {tab === "deals" && <div className="standard-page"><Deals deals={deals} setDeals={setDeals} today={now.date} /></div>}
           {tab === "review" && <div className="standard-page"><Overview date={date} setDate={selectDate} today={now.date} sub={reviewView} setSub={setReviewView} /></div>}
-          {tab === "more" && <div className="standard-page"><More initialView={moreInitialView} s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} code={code} updateCode={updateCode} businessKnowledge={businessKnowledge} updateBusinessKnowledge={updateBusinessKnowledge} businessChat={businessChat} updateBusinessChat={updateBusinessChat} northStar={northStar} onLock={() => setLocked(true)} /></div>}
+          {tab === "more" && <div className="standard-page"><More initialView={moreInitialView} s={s} up={up} date={date} today={now.date} deals={deals} settings={settings} upSettings={upSettings} healthProfile={healthProfile} updateHealthProfile={updateHealthProfile} trainingPlan={trainingPlan} updateTrainingPlan={updateTrainingPlan} code={code} updateCode={updateCode} developmentKnowledge={developmentKnowledge} updateDevelopmentKnowledge={updateDevelopmentKnowledge} developmentChat={developmentChat} updateDevelopmentChat={updateDevelopmentChat} businessKnowledge={businessKnowledge} updateBusinessKnowledge={updateBusinessKnowledge} businessChat={businessChat} updateBusinessChat={updateBusinessChat} northStar={northStar} onLock={() => setLocked(true)} /></div>}
         </main>
 
         <nav className="mobile-bottom-nav" aria-label="Основная навигация">

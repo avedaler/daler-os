@@ -7,13 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/verify-migrations.mjs && node scripts/verify-youtube.mjs && node scripts/verify-ai-connections.mjs && node scripts/verify-ai-routing.mjs && node scripts/verify-chat-attachments.mjs"
+    "test": "node scripts/verify-migrations.mjs && node scripts/verify-youtube.mjs && node scripts/verify-web-source.mjs && node scripts/verify-ai-connections.mjs && node scripts/verify-ai-routing.mjs && node scripts/verify-chat-attachments.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
     "@supabase/supabase-js": "^2.110.2",
     "ai": "^6.0.237",
     "astronomy-engine": "^2.1.19",
+    "cheerio": "^1.2.0",
     "idb-keyval": "^6.2.1",
     "lucide-react": "^0.468.0",
     "openai": "^7.1.0",

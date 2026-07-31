@@ -91,6 +91,33 @@ export async function saveBusinessChat(messages) {
   await persist("businessChat", messages);
 }
 
+export async function loadDevelopmentKnowledge() {
+  return (await get("developmentKnowledge")) || null;
+}
+
+export async function saveDevelopmentKnowledge(knowledge) {
+  await persist("developmentKnowledge", knowledge);
+}
+
+export async function loadDevelopmentChat() {
+  const stored = await get("developmentChat");
+  if (Array.isArray(stored)) return stored;
+  try {
+    const legacy = JSON.parse(localStorage.getItem("daler-os-ai-development") || "[]");
+    if (Array.isArray(legacy) && legacy.length) {
+      await persist("developmentChat", legacy);
+      return legacy;
+    }
+  } catch {
+    // Start with an empty controlled chat when the legacy value is unavailable.
+  }
+  return [];
+}
+
+export async function saveDevelopmentChat(messages) {
+  await persist("developmentChat", messages);
+}
+
 // Полный бэкап/восстановление: все ключи IndexedDB одним JSON-объектом
 export async function exportAllData() {
   const ks = await keys();

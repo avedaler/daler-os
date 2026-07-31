@@ -12,6 +12,12 @@ import {
 import { calendarMetrics, dailyEvents } from "../src/lib/achievements.js";
 import { CODE_LAWS, codeEventsForDate, codeSession, defaultCodeState, migrateCodeState } from "../src/lib/code.js";
 import { businessResourceContext, migrateBusinessChat, migrateBusinessKnowledge } from "../src/lib/business.js";
+import {
+  developmentKnowledgeContext,
+  experimentSignal,
+  migrateDevelopmentChat,
+  migrateDevelopmentKnowledge,
+} from "../src/lib/development.js";
 
 assert.deepEqual(AFFIRMATIONS, [
   "Мои финансовые доходы сейчас увеличиваются",
@@ -184,5 +190,45 @@ assert.deepEqual(migrateBusinessChat([{
   content: "Разбери файл",
   attachments: [{ name: "plan.pdf", mediaType: "application/pdf", size: 2048, kind: "file", data: "secret-binary" }],
 }])[0].attachments, [{ name: "plan.pdf", mediaType: "application/pdf", size: 2048, kind: "file" }]);
+
+const developmentKnowledge = migrateDevelopmentKnowledge({
+  resources: [{
+    id: "focus-source",
+    type: "article",
+    title: "Проверка фокуса",
+    summary: "Одна защищённая сессия глубокой работы.",
+    quality: { level: "moderate", reason: "Есть объяснимый механизм, но нет данных об эффекте пользователя." },
+    claims: [{ text: "Отключение уведомлений уменьшает переключения", support: "plausible" }],
+    practices: [{
+      id: "focus-practice",
+      title: "Фокус 45 минут",
+      protocol: "Отключить уведомления и завершить один материал.",
+      durationDays: 7,
+      metric: "Факт завершённого материала",
+      evidence: "moderate",
+      risks: [],
+    }],
+  }],
+  experiments: [{
+    id: "focus-experiment",
+    resourceId: "focus-source",
+    practiceId: "focus-practice",
+    title: "Фокус 45 минут",
+    status: "active",
+    checkIns: [
+      { date: "2026-07-28", result: "better", note: "Документ отправлен" },
+      { date: "2026-07-29", result: "better", note: "Без переключений" },
+      { date: "2026-07-30", result: "same", note: "" },
+    ],
+  }],
+});
+assert.equal(developmentKnowledge.resources[0].practices[0].durationDays, 7);
+assert.equal(experimentSignal(developmentKnowledge.experiments[0]), "Предварительно работает");
+assert.match(developmentKnowledgeContext(developmentKnowledge), /Фокус 45 минут/);
+assert.deepEqual(migrateDevelopmentChat([{
+  role: "user",
+  content: "Разбери практику",
+  attachments: [{ name: "notes.md", mediaType: "text/markdown", size: 100, kind: "text", content: "private" }],
+}])[0].attachments, [{ name: "notes.md", mediaType: "text/markdown", size: 100, kind: "text" }]);
 
 console.log("Migration and protocol checks passed.");

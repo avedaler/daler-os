@@ -6,8 +6,8 @@ import { loadDay } from "../lib/store";
 import Forecast from "./Forecast";
 import Settings from "./Settings";
 import Code from "./Code";
-import AiChat from "./AiChat";
 import BusinessAdvisor from "./BusinessAdvisor";
+import DevelopmentAdvisor from "./DevelopmentAdvisor";
 import { Btn, CheckRow, ChoiceChips, Field, Section, SettingsRow, StatusBadge } from "./atoms";
 
 function loadLatestForecastAnalysis() {
@@ -48,7 +48,18 @@ function useStreaks(date) {
   return streaks;
 }
 
-export function Development({ s, up, date, northStar = "", compact = false, rail = false }) {
+export function Development({
+  s,
+  up,
+  date,
+  northStar = "",
+  compact = false,
+  rail = false,
+  knowledge,
+  updateKnowledge,
+  messages,
+  updateMessages,
+}) {
   const setHabit = (patch) => up((previous) => ({ habits: { ...previous.habits, ...patch } }));
   const streaks = useStreaks(date);
   const habits = s.habits;
@@ -106,17 +117,13 @@ export function Development({ s, up, date, northStar = "", compact = false, rail
       {habits.social && <Field label="С кем и следующий шаг" value={habits.social === "✓" ? "" : habits.social} onChange={(social) => setHabit({ social: social || "✓" })} />}
       <div className="development-focus"><span className="eyebrow">Личный фокус</span><ChoiceChips options={HOBBIES} value={habits.hobby} onChange={(hobby) => setHabit({ hobby })} /></div>
     </Section>
-    <AiChat
-      mode="development"
-      title="Диалог о личном развитии"
-      description="Разбери решение, привычку или повторяющийся паттерн. Последний AI-разбор гороскопа можно подключить отдельным выбором."
-      storageKey="daler-os-ai-development"
+    <DevelopmentAdvisor
+      knowledge={knowledge}
+      updateKnowledge={updateKnowledge}
+      messages={messages}
+      updateMessages={updateMessages}
       shareOptions={shareOptions}
-      quickPrompts={[
-        "Какой паттерн сегодня сильнее всего мешает исполнению?",
-        "Помоги выбрать один шаг для роста дисциплины.",
-        "Разбери моё решение без лести и общих слов.",
-      ]}
+      date={date}
     />
   </>;
 }
@@ -256,19 +263,19 @@ function TrainingPlanEditor({ plan, updatePlan }) {
 }
 
 const MORE_GROUPS = [
-  ["Фокус", [["forecast", "Расчёт дня и периода", "Луна, личный день, окна, риски и ИИ-разбор"], ["development", "Развитие", "Привычки, серии и отдельный ИИ-диалог"], ["business", "Бизнес-анализ", "База знаний, навыки и решения с ИИ"], ["code", "Кодекс исполнения", "Принципы, протокол и доказательства"]]],
+  ["Фокус", [["forecast", "Расчёт дня и периода", "Луна, личный день, окна, риски и ИИ-разбор"], ["development", "Развитие", "Источники, личные эксперименты и ИИ-анализ"], ["business", "Бизнес-анализ", "База знаний, навыки и решения с ИИ"], ["code", "Кодекс исполнения", "Принципы, протокол и доказательства"]]],
   ["Режим", [["health", "Схема здоровья", "Mounjaro по средам и текущая схема добавок"], ["training", "Тренировочная неделя", "Нагрузка, восстановление и замены"]]],
   ["Данные и доступ", [["export", "Экспорт и печать", "Календарь, Напоминания Apple и инструкция"], ["settings", "Настройки", "Расписание, синхронизация и блокировка"]]],
 ];
 
-export default function More({ initialView = "", s, up, date, today, deals, settings, upSettings, healthProfile, updateHealthProfile, trainingPlan, updateTrainingPlan, code, updateCode, businessKnowledge, updateBusinessKnowledge, businessChat, updateBusinessChat, northStar, onLock }) {
+export default function More({ initialView = "", s, up, date, today, deals, settings, upSettings, healthProfile, updateHealthProfile, trainingPlan, updateTrainingPlan, code, updateCode, developmentKnowledge, updateDevelopmentKnowledge, developmentChat, updateDevelopmentChat, businessKnowledge, updateBusinessKnowledge, businessChat, updateBusinessChat, northStar, onLock }) {
   const [view, setView] = useState(initialView);
   useEffect(() => {
     if (initialView) setView(initialView);
   }, [initialView]);
   if (view) return <div className="more-detail">
     <button type="button" className="back-action" onClick={() => setView("")}>Назад к системе</button>
-    {view === "development" && <Development s={s} up={up} date={date} northStar={northStar} />}
+    {view === "development" && <Development s={s} up={up} date={date} northStar={northStar} knowledge={developmentKnowledge} updateKnowledge={updateDevelopmentKnowledge} messages={developmentChat} updateMessages={updateDevelopmentChat} />}
     {view === "health" && <HealthProfileEditor profile={healthProfile} updateProfile={updateHealthProfile} />}
     {view === "training" && <TrainingPlanEditor plan={trainingPlan} updatePlan={updateTrainingPlan} />}
     {view === "forecast" && <Forecast today={today} />}

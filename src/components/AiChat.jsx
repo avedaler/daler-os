@@ -68,6 +68,7 @@ export default function AiChat({
   shareOptions = [],
   valueMessages,
   onMessagesChange,
+  onUserMessage,
 }) {
   const [localMessages, setLocalMessages] = useState(() => loadMessages(storageKey));
   const [draft, setDraft] = useState("");
@@ -305,6 +306,13 @@ export default function AiChat({
       attachments: attachmentPayloads,
     }];
     commitMessages(persistedMessages);
+    try {
+      Promise.resolve(onUserMessage?.(displayMessage)).catch(() => {
+        // The chat response remains independent from optional background learning.
+      });
+    } catch {
+      // The chat response remains independent from optional background learning.
+    }
     setDraft("");
     setAttachments([]);
     await requestReply(requestMessages);
