@@ -10,17 +10,28 @@ export const CHAT_ATTACHMENT_ACCEPT = [
   "application/pdf",
   ".txt",
   ".md",
+  ".markdown",
   ".csv",
   ".json",
 ].join(",");
 
-const TEXT_EXTENSIONS = /\.(txt|md|csv|json)$/i;
 const TEXT_MEDIA_TYPES = new Set([
   "text/plain",
   "text/markdown",
   "text/csv",
   "application/json",
 ]);
+const TEXT_MEDIA_TYPE_ALIASES = new Map([
+  ["text/x-markdown", "text/markdown"],
+  ["application/markdown", "text/markdown"],
+  ["application/x-markdown", "text/markdown"],
+]);
+const TEXT_EXTENSION_TYPES = [
+  [/\.(md|markdown)$/i, "text/markdown"],
+  [/\.txt$/i, "text/plain"],
+  [/\.csv$/i, "text/csv"],
+  [/\.json$/i, "application/json"],
+];
 const BINARY_MEDIA_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -38,6 +49,25 @@ function fileAsDataUrl(file) {
     reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
     reader.readAsDataURL(file);
   });
+}
+
+function fileAsText(file) {
+  if (typeof file.text === "function") return file.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Не удалось прочитать текстовый файл"));
+    reader.readAsText(file, "utf-8");
+  });
+}
+
+export function canonicalTextMediaType(name, mediaType) {
+  const fileName = String(name || "");
+  const extensionType = TEXT_EXTENSION_TYPES.find(([pattern]) => pattern.test(fileName))?.[1];
+  if (extensionType) return extensionType;
+  const normalizedType = String(mediaType || "").toLowerCase().split(";")[0].trim();
+  if (TEXT_MEDIA_TYPES.has(normalizedType)) return normalizedType;
+  return TEXT_MEDIA_TYPE_ALIASES.get(normalizedType) || "";
 }
 
 function canvasBlob(canvas, type, quality) {
@@ -100,15 +130,15 @@ export function persistableMessages(messages) {
 
 export async function prepareChatAttachment(originalFile) {
   const file = originalFile.type.startsWith("image/") ? await compressedImage(originalFile) : originalFile;
-  const isText = TEXT_MEDIA_TYPES.has(file.type) || (!file.type && TEXT_EXTENSIONS.test(file.name));
-  if (isText) {
+  const textMediaType = canonicalTextMediaType(file.name, file.type);
+  if (textMediaType) {
     if (file.size > 300_000) throw new Error(`${file.name}: текстовый файл слишком большой`);
-    const content = (await file.text()).slice(0, MAX_TEXT_CHARS);
+    const content = String(await fileAsText(file)).slice(0, MAX_TEXT_CHARS);
     if (!content.trim()) throw new Error(`${file.name}: файл пустой`);
     return {
       id: newId(),
       name: file.name,
-      mediaType: file.type || "text/plain",
+      mediaType: textMediaType,
       size: file.size,
       kind: "text",
       content,

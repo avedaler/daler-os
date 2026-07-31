@@ -66,7 +66,7 @@ export default function DevelopmentAdvisor({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [checkInNotes, setCheckInNotes] = useState({});
-  const learningUrlsRef = useRef(new Set());
+  const learningSourcesRef = useRef(new Set());
   const resources = knowledge?.resources || [];
   const experiments = knowledge?.experiments || [];
   const activeExperiments = experiments.filter((item) => item.status === "active");
@@ -86,14 +86,17 @@ export default function DevelopmentAdvisor({
       if (!automatic) setNotice("Эта ссылка уже сохранена в базе развития");
       return null;
     }
-    if (url && learningUrlsRef.current.has(url)) return null;
-    if (url) learningUrlsRef.current.add(url);
+    const sourceKey = url || `text:${sourceDraft.title || ""}:${content.length}:${content.slice(0, 120)}`;
+    if (learningSourcesRef.current.has(sourceKey)) return null;
+    learningSourcesRef.current.add(sourceKey);
     if (!automatic) {
       setExtracting(true);
       setError("");
       setNotice("");
     } else {
-      setNotice("Нашёл новую ссылку в диалоге. Извлекаю практики в базу развития…");
+      setNotice(url
+        ? "Нашёл новую ссылку в диалоге. Извлекаю практики в базу развития…"
+        : `Читаю «${sourceDraft.title || "текстовый файл"}» и извлекаю практики в базу развития…`);
     }
     try {
       const cloud = await aiCloudContext();
@@ -144,14 +147,24 @@ export default function DevelopmentAdvisor({
       setError(requestError.message || "Не удалось изучить источник");
       return null;
     } finally {
-      if (url) learningUrlsRef.current.delete(url);
+      learningSourcesRef.current.delete(sourceKey);
       if (!automatic) setExtracting(false);
     }
   };
 
-  const learnLinksFromMessage = ({ content }) => {
-    const urls = [...new Set((String(content || "").match(URL_PATTERN) || []).map(cleanDetectedUrl))].slice(0, 3);
-    for (const url of urls) extractSource({ title: "", url, content: "" }, { automatic: true });
+  const learnSourcesFromMessage = ({ content, attachments = [] }) => {
+    const links = [...new Set((String(content || "").match(URL_PATTERN) || []).map(cleanDetectedUrl))]
+      .map((url) => ({ title: "", url, content: "" }));
+    const textFiles = attachments
+      .filter((attachment) => attachment?.kind === "text" && String(attachment.content || "").trim())
+      .map((attachment) => ({
+        title: String(attachment.name || "Текстовый файл").replace(/\.[^.]+$/, ""),
+        url: "",
+        content: attachment.content,
+      }));
+    for (const source of [...links, ...textFiles].slice(0, 3)) {
+      extractSource(source, { automatic: true });
+    }
   };
 
   const removeResource = (id) => {
@@ -268,7 +281,7 @@ export default function DevelopmentAdvisor({
         {notice && <p className="business-notice">{notice}</p>}
         {error && <p className="ai-error" role="alert">{error}</p>}
         <small className="business-privacy">
-          ИИ отделяет утверждения от доказательств, не принимает советы на веру и сохраняет только структурированный конспект. Публичные ссылки из диалога также добавляются автоматически.
+          ИИ отделяет утверждения от доказательств, не принимает советы на веру и сохраняет только структурированный конспект. Публичные ссылки и текстовые вложения из диалога также добавляются автоматически.
         </small>
       </div>
 
@@ -353,7 +366,7 @@ export default function DevelopmentAdvisor({
       context={aiContext}
       valueMessages={messages}
       onMessagesChange={updateMessages}
-      onUserMessage={learnLinksFromMessage}
+      onUserMessage={learnSourcesFromMessage}
       shareOptions={shareOptions}
       quickPrompts={[
         "Какая из сохранённых практик сейчас даст самый полезный тест?",

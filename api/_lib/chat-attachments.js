@@ -15,6 +15,17 @@ const ALLOWED_TEXT_TYPES = new Set([
   "text/csv",
   "application/json",
 ]);
+const TEXT_MEDIA_TYPE_ALIASES = new Map([
+  ["text/x-markdown", "text/markdown"],
+  ["application/markdown", "text/markdown"],
+  ["application/x-markdown", "text/markdown"],
+]);
+const TEXT_EXTENSION_TYPES = [
+  [/\.(md|markdown)$/i, "text/markdown"],
+  [/\.txt$/i, "text/plain"],
+  [/\.csv$/i, "text/csv"],
+  [/\.json$/i, "application/json"],
+];
 
 function requestError(message, statusCode = 400) {
   const error = new Error(message);
@@ -24,6 +35,14 @@ function requestError(message, statusCode = 400) {
 
 function cleanName(value) {
   return String(value || "Файл").trim().slice(0, 180) || "Файл";
+}
+
+export function canonicalTextMediaType(name, mediaType) {
+  const extensionType = TEXT_EXTENSION_TYPES.find(([pattern]) => pattern.test(String(name || "")))?.[1];
+  if (extensionType) return extensionType;
+  const normalizedType = String(mediaType || "").toLowerCase().split(";")[0].trim();
+  if (ALLOWED_TEXT_TYPES.has(normalizedType)) return normalizedType;
+  return TEXT_MEDIA_TYPE_ALIASES.get(normalizedType) || "";
 }
 
 export function base64Data(dataUrl) {
@@ -48,12 +67,13 @@ export function cleanMessageAttachments(value, totals = { binary: 0, text: 0 }) 
     const mediaType = String(item.mediaType || "").toLowerCase().slice(0, 100);
     const size = Math.max(0, Number(item.size) || 0);
 
-    if (item.kind === "text" && ALLOWED_TEXT_TYPES.has(mediaType)) {
+    const textMediaType = item.kind === "text" ? canonicalTextMediaType(name, mediaType) : "";
+    if (textMediaType) {
       const content = String(item.content || "").slice(0, MAX_TEXT_CHARS);
       if (!content.trim()) continue;
       totals.text += content.length;
       if (totals.text > MAX_TOTAL_TEXT_CHARS) throw requestError("Текст во вложениях слишком большой", 413);
-      result.push({ name, mediaType, size, kind: "text", content });
+      result.push({ name, mediaType: textMediaType, size, kind: "text", content });
       continue;
     }
 

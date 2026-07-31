@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import {
   base64Data,
+  canonicalTextMediaType as canonicalServerTextMediaType,
   cleanMessageAttachments,
   gatewayMessages,
 } from "../api/_lib/chat-attachments.js";
 import {
   attachmentMeta,
   attachmentPayloadSize,
+  canonicalTextMediaType as canonicalClientTextMediaType,
   persistableMessages,
   prepareChatAttachment,
 } from "../src/lib/aiAttachments.js";
@@ -57,6 +59,32 @@ const preparedText = await prepareChatAttachment({
 assert.equal(preparedText.kind, "text");
 assert.equal(preparedText.content, "Факт, риск, действие");
 assert.equal(attachmentPayloadSize(preparedText), "Факт, риск, действие".length);
+
+const safariMarkdown = await prepareChatAttachment({
+  name: "README.MD",
+  type: "application/octet-stream",
+  size: 34,
+  text: async () => "# Контекст\nФайл передан с iPhone",
+});
+assert.equal(safariMarkdown.kind, "text");
+assert.equal(safariMarkdown.mediaType, "text/markdown");
+assert.equal(canonicalClientTextMediaType("notes.markdown", "application/octet-stream"), "text/markdown");
+assert.equal(canonicalClientTextMediaType("notes", "text/x-markdown"), "text/markdown");
+assert.equal(canonicalServerTextMediaType("notes.md", "application/octet-stream"), "text/markdown");
+assert.equal(canonicalServerTextMediaType("notes", "application/markdown"), "text/markdown");
+assert.deepEqual(cleanMessageAttachments([{
+  name: "iphone.md",
+  mediaType: "application/octet-stream",
+  size: 24,
+  kind: "text",
+  content: "# Факт\nMarkdown прочитан",
+}])[0], {
+  name: "iphone.md",
+  mediaType: "text/markdown",
+  size: 24,
+  kind: "text",
+  content: "# Факт\nMarkdown прочитан",
+});
 
 const persisted = persistableMessages([{
   role: "user",

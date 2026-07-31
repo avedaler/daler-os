@@ -18,6 +18,11 @@ const MAX_MESSAGE_LENGTH = 20_000;
 const AUTO_SPEAK_KEY = "daler-os-ai-auto-speak";
 const LATEST_FORECAST_KEY = "daler-os-ai-forecast-latest";
 const MODEL_STORAGE_KEY = "daler-os-ai-model";
+const attachmentSessionKey = (attachment) => [
+  attachment?.name || "",
+  attachment?.mediaType || "",
+  Number(attachment?.size) || 0,
+].join("|");
 const FALLBACK_MODEL_OPTIONS = [
   { id: "openai/gpt-5.6-sol", name: "GPT-5.6 Sol", provider: "openai" },
   { id: "openai/gpt-5.6-terra", name: "GPT-5.6 Terra", provider: "openai" },
@@ -89,6 +94,7 @@ export default function AiChat({
   const recognitionRef = useRef(null);
   const fileInputRef = useRef(null);
   const failedRequestRef = useRef(null);
+  const attachmentPayloadsRef = useRef(new Map());
   const controlled = Array.isArray(valueMessages);
   const messages = controlled ? valueMessages : localMessages;
   const supportsRecognition = typeof window !== "undefined"
@@ -262,6 +268,14 @@ export default function AiChat({
     setSending(true);
 
     try {
+      const hydratedMessages = nextMessages.map((message) => ({
+        ...message,
+        attachments: Array.isArray(message.attachments)
+          ? message.attachments.map((attachment) => (
+            attachmentPayloadsRef.current.get(attachmentSessionKey(attachment)) || attachment
+          ))
+          : [],
+      }));
       const cloud = await aiCloudContext();
       const response = await fetch("/api/ai-chat", {
         method: "POST",
@@ -269,7 +283,7 @@ export default function AiChat({
         body: JSON.stringify({
           mode,
           model: selectedModel,
-          messages: nextMessages.slice(-MAX_SENT_MESSAGES),
+          messages: hydratedMessages.slice(-MAX_SENT_MESSAGES),
           context: [context, sharedContext].filter(Boolean).join("\n\n"),
           cloud,
         }),
@@ -296,6 +310,9 @@ export default function AiChat({
     const content = String(text || "").trim();
     if ((!content && !attachments.length) || sending || preparingAttachments) return;
     const attachmentPayloads = attachments;
+    attachmentPayloads.forEach((attachment) => {
+      attachmentPayloadsRef.current.set(attachmentSessionKey(attachment), attachment);
+    });
     const displayMessage = {
       role: "user",
       content,
@@ -308,7 +325,10 @@ export default function AiChat({
     }];
     commitMessages(persistedMessages);
     try {
-      Promise.resolve(onUserMessage?.(displayMessage)).catch(() => {
+      Promise.resolve(onUserMessage?.({
+        ...displayMessage,
+        attachments: attachmentPayloads,
+      })).catch(() => {
         // The chat response remains independent from optional background learning.
       });
     } catch {
@@ -372,6 +392,7 @@ export default function AiChat({
     setSpeakingIndex(null);
     setListening(false);
     setAttachments([]);
+    attachmentPayloadsRef.current.clear();
     failedRequestRef.current = null;
     cancelEdit();
     commitMessages([]);
@@ -533,7 +554,10 @@ export default function AiChat({
       {attachments.length > 0 && <div className="ai-attachment-tray">
         {attachments.map((attachment) => <div key={attachment.id}>
           {attachment.kind === "image" ? <Image size={15} aria-hidden="true" /> : attachment.kind === "text" ? <FileText size={15} aria-hidden="true" /> : <Paperclip size={15} aria-hidden="true" />}
-          <span><strong>{attachment.name}</strong><small>{formatAttachmentSize(attachment.size)}</small></span>
+          <span>
+            <strong>{attachment.name}</strong>
+            <small>{attachment.kind === "text" ? "Текст прочитан · " : ""}{formatAttachmentSize(attachment.size)}</small>
+          </span>
           <button type="button" onClick={() => setAttachments((current) => current.filter((item) => item.id !== attachment.id))} aria-label={`Убрать ${attachment.name}`} title="Убрать вложение"><X size={14} aria-hidden="true" /></button>
         </div>)}
       </div>}
