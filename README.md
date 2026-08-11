@@ -37,3 +37,48 @@ npx vercel dist --prod    # или подключить репозиторий, 
 ## Данные
 
 Все записи хранятся локально в IndexedDB устройства, никуда не отправляются. Бэкап — регулярный экспорт месяца в Markdown (вкладка ⚙).
+
+---
+
+# ASITA MODULES
+
+Этот репозиторий теперь является канонической кодовой базой для **Asita Daler OS** и интегрированных модулей.
+
+## Daler OS
+
+- Основной домен: `daler.asita.ai`
+- Текущий рабочий модуль: ежедневная операционная система
+- Существующие данные Daler OS нельзя автоматически переосмысливать как данные других модулей
+
+## RCMND by Asita
+
+RCMND — private-first система памяти о местах, личного журнала опыта, контекстных рекомендаций и контролируемого обмена рекомендациями.
+
+- Каноническое имя: **RCMND by Asita**
+- Канонический домен: `rcmnd.asita.ai`
+- Fallback route: `/rcmnd`
+- Предыдущее рабочее название: IntelFlow
+- Документация: [`docs/rcmnd/README.md`](./docs/rcmnd/README.md)
+- Первая задача Codex: [`docs/rcmnd/CODEX_TASK_00_INTEGRATION_FOUNDATION.md`](./docs/rcmnd/CODEX_TASK_00_INTEGRATION_FOUNDATION.md)
+
+RCMND должен развиваться внутри этого репозитория как модуль Asita, а не как отдельный fork с дублирующими authentication, design system, PWA, privacy, AI и deployment слоями.
+
+## Codex
+
+Codex должен сначала читать корневой [`AGENTS.md`](./AGENTS.md), затем документацию активного модуля.
+
+Для RCMND запрещено начинать широкую разработку до завершения Task 00, который обязан:
+
+- сохранить и проверить существующий Daler OS;
+- создать rollback reference;
+- добавить quality scripts и CI;
+- создать module registry и host resolver;
+- добавить отключённый по умолчанию RCMND shell;
+- подготовить database, privacy, provider и secure server boundaries;
+- составить план первого private capture vertical slice.
+
+## Документация Asita
+
+Общий индекс:
+
+[`docs/README.md`](./docs/README.md)
