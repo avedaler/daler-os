@@ -27,7 +27,15 @@ const oracle = [
 ];
 
 function readState() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+  try {
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return {
+      done: value.done && typeof value.done === "object" && !Array.isArray(value.done) ? value.done : {},
+      mode: value.mode === "reality" ? "reality" : "script",
+      reality: typeof value.reality === "string" ? value.reality : "",
+    };
+  }
   catch { return {}; }
 }
 
@@ -35,9 +43,15 @@ export default function MovieV2() {
   const [done, setDone] = useState(() => readState().done || {});
   const [mode, setMode] = useState(() => readState().mode || "script");
   const [reality, setReality] = useState(() => readState().reality || "");
+  const [saveFailed, setSaveFailed] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ done, mode, reality }));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ done, mode, reality }));
+      setSaveFailed(false);
+    } catch {
+      setSaveFailed(true);
+    }
   }, [done, mode, reality]);
 
   const completed = useMemo(() => scenes.filter((s) => done[s.id]).length, [done]);
@@ -53,6 +67,7 @@ export default function MovieV2() {
       `}</style>
 
       <div className="mv-shell">
+        {saveFailed && <p role="alert">Не удалось сохранить изменения на этом устройстве. Скопируйте заметки перед закрытием страницы.</p>}
         <header className="mv-top">
           <div className="mv-kicker">THE MOVIE V2 · TODAY</div>
           <h1 className="mv-title">EPISODE 002 — CAPITAL & CONTROL</h1>
