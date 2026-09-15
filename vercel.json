@@ -1,0 +1,9 @@
+{
+  "framework": "vite",
+  "buildCommand": "DEPLOY_BASE=/ npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/the-movie", "destination": "/index.html" },
+    { "source": "/the-movie/", "destination": "/index.html" }
+  ]
+}
